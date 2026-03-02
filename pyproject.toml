@@ -1,0 +1,30 @@
+[project]
+name = "orionbelt-semantic-layer-mcp"
+version = "0.5.0"
+description = "Thin MCP server for OrionBelt Semantic Layer — delegates to REST API"
+requires-python = ">=3.12"
+license = "Apache-2.0"
+dependencies = [
+    "fastmcp>=3.0,<4",
+    "httpx>=0.28",
+    "pydantic-settings>=2.12",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.25",
+    "respx>=0.22",
+    "ruff>=0.9",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "A", "SIM"]
