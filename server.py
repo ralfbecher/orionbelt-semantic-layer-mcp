@@ -112,14 +112,29 @@ def _invalidate_session() -> None:
 # ---------------------------------------------------------------------------
 
 
-def _raise_api_error(response: httpx.Response) -> None:
-    """Raise ToolError from an API error response."""
+def _parse_error_detail(response: httpx.Response) -> str:
+    """Extract error detail string from an API error response."""
     try:
         body = response.json()
-        detail = body.get("detail", response.text)
+        return str(body.get("detail", response.text))
     except Exception:
-        detail = response.text
+        return response.text
+
+
+def _raise_api_error(response: httpx.Response, detail: str | None = None) -> None:
+    """Raise ToolError from an API error response."""
+    if detail is None:
+        detail = _parse_error_detail(response)
     raise ToolError(f"API error ({response.status_code}): {detail}")
+
+
+def _is_session_expired(response: httpx.Response) -> bool:
+    """Return True if the API error indicates an expired/missing session."""
+    if response.status_code != 404:
+        return False
+    detail = _parse_error_detail(response)
+    lowered = detail.lower()
+    return "session" in lowered and "not found" in lowered
 
 
 def _api_request(
@@ -144,7 +159,7 @@ def _api_request(
     except httpx.TimeoutException:
         raise ToolError("API request timed out") from None
 
-    if resp.status_code == 404 and retry_on_expired and "/sessions/" in path:
+    if _is_session_expired(resp) and retry_on_expired and "/sessions/" in path:
         # Session may have expired — recreate and retry once
         _invalidate_session()
         sid = _ensure_session()

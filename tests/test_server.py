@@ -431,6 +431,49 @@ def test_session_retry_on_404(mock_api: respx.MockRouter):
 
 
 # ---------------------------------------------------------------------------
+# Session safety on non-session 404s
+# ---------------------------------------------------------------------------
+
+
+def test_session_not_invalidated_on_model_404(mock_api: respx.MockRouter):
+    """A 404 for a missing model should not invalidate the session."""
+    from fastmcp.exceptions import ToolError
+
+    server._api_session_id = "session-old"
+    mock_api.get("/sessions/session-old/models/no-such-model").mock(
+        return_value=httpx.Response(404, json={"detail": "Model not found"})
+    )
+
+    with pytest.raises(ToolError, match="API error.*404"):
+        server.describe_model("no-such-model")
+
+    session_calls = [
+        call for call in mock_api.calls if call.request.url.path == "/sessions"
+    ]
+    assert len(session_calls) == 0
+    assert server._api_session_id == "session-old"
+
+
+def test_session_not_invalidated_on_plain_text_404(mock_api: respx.MockRouter):
+    """A plain-text 404 (e.g. from a reverse proxy) should not invalidate the session."""
+    from fastmcp.exceptions import ToolError
+
+    server._api_session_id = "session-old"
+    mock_api.get("/sessions/session-old/models/missing").mock(
+        return_value=httpx.Response(404, text="Not Found")
+    )
+
+    with pytest.raises(ToolError, match="API error.*404"):
+        server.describe_model("missing")
+
+    session_calls = [
+        call for call in mock_api.calls if call.request.url.path == "/sessions"
+    ]
+    assert len(session_calls) == 0
+    assert server._api_session_id == "session-old"
+
+
+# ---------------------------------------------------------------------------
 # Error handling
 # ---------------------------------------------------------------------------
 
