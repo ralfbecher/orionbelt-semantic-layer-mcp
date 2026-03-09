@@ -176,6 +176,7 @@ def test_describe_model(mock_api: respx.MockRouter):
                         "code": "ORDERS",
                         "columns": ["Order ID", "Amount"],
                         "join_targets": ["Customers"],
+                        "synonyms": [],
                     }
                 ],
                 "dimensions": [
@@ -185,6 +186,7 @@ def test_describe_model(mock_api: respx.MockRouter):
                         "data_object": "Customers",
                         "column": "Country",
                         "time_grain": None,
+                        "synonyms": ["nation", "region"],
                     }
                 ],
                 "measures": [
@@ -193,6 +195,7 @@ def test_describe_model(mock_api: respx.MockRouter):
                         "result_type": "float",
                         "aggregation": "sum",
                         "expression": None,
+                        "synonyms": ["sales", "income"],
                     }
                 ],
                 "metrics": [],
@@ -205,8 +208,10 @@ def test_describe_model(mock_api: respx.MockRouter):
     assert "Orders" in result
     assert "DIMENSIONS:" in result
     assert "Country" in result
+    assert "synonyms: nation, region" in result
     assert "MEASURES:" in result
     assert "Total Revenue" in result
+    assert "synonyms: sales, income" in result
 
 
 # ---------------------------------------------------------------------------

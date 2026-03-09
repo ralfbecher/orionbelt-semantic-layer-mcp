@@ -294,7 +294,39 @@ timestamp_tz, boolean, json
 sum, count, count_distinct, avg, min, max,
 any_value, median, mode, listagg
 
-## 5. customExtensions — vendor-keyed metadata (optional)
+## 5. synonyms — alternative names (optional, LLM hints)
+
+All five element levels (dataObject, column, dimension, measure, metric) support
+an optional `synonyms` list — alternative names or terms that help LLMs
+map natural-language questions to the correct model element:
+
+```yaml
+dataObjects:
+  Customers:
+    code: CUSTOMERS
+    database: EDW
+    schema: SALES
+    synonyms: [client, buyer, purchaser]
+    columns:
+      Country:
+        code: COUNTRY
+        abstractType: string
+        synonyms: [nation, region]
+
+dimensions:
+  Customer Country:
+    dataObject: Customers
+    column: Country
+    synonyms: [client country, buyer country]
+
+measures:
+  Revenue:
+    aggregation: sum
+    expression: '{[Orders].[Amount]}'
+    synonyms: [sales, income, turnover]
+```
+
+## 6. customExtensions — vendor-keyed metadata (optional)
 
 All six levels (model, dataObject, column, dimension, measure, metric) support
 an optional `customExtensions` array for vendor-specific metadata:
@@ -533,6 +565,8 @@ def describe_model(model_id: str) -> str:
         lines.append(f"    columns: {', '.join(obj.get('columns', []))}")
         if obj.get("join_targets"):
             lines.append(f"    joins to: {', '.join(obj['join_targets'])}")
+        if obj.get("synonyms"):
+            lines.append(f"    synonyms: {', '.join(obj['synonyms'])}")
     lines.append("")
 
     # Dimensions
@@ -543,6 +577,8 @@ def describe_model(model_id: str) -> str:
             f"  {dim['name']}  ({dim['result_type']}, "
             f"{dim['data_object']}.{dim['column']}{grain})"
         )
+        if dim.get("synonyms"):
+            lines.append(f"    synonyms: {', '.join(dim['synonyms'])}")
     lines.append("")
 
     # Measures
@@ -550,6 +586,8 @@ def describe_model(model_id: str) -> str:
     for m in desc.get("measures", []):
         expr = f"  expr: {m['expression']}" if m.get("expression") else ""
         lines.append(f"  {m['name']}  ({m['result_type']}, {m['aggregation']}{expr})")
+        if m.get("synonyms"):
+            lines.append(f"    synonyms: {', '.join(m['synonyms'])}")
     lines.append("")
 
     # Metrics
@@ -558,6 +596,8 @@ def describe_model(model_id: str) -> str:
         lines.append("METRICS:")
         for met in metrics:
             lines.append(f"  {met['name']}  expr: {met['expression']}")
+            if met.get("synonyms"):
+                lines.append(f"    synonyms: {', '.join(met['synonyms'])}")
         lines.append("")
 
     return "\n".join(lines)
@@ -744,6 +784,9 @@ measures:
 metrics:
   <Metric Name>:
     expression: '{[Measure A]} / {[Measure B]}'   # {[Measure Name]} syntax
+
+# Optional on dataObject, column, dimension, measure, metric:
+# synonyms: [alternative name, ...]   # LLM hints for matching user intent
 
 # Optional on any level: model, dataObject, column, dimension, measure, metric
 customExtensions:
@@ -952,17 +995,17 @@ def _check_api_health() -> None:
             "Cannot connect to OrionBelt Semantic Layer API at %s — is the service running?",
             settings.api_base_url,
         )
-        raise SystemExit(1)
+        raise SystemExit(1) from None
     except httpx.TimeoutException:
         logger.error(
             "API health check timed out (%s)", settings.api_base_url
         )
-        raise SystemExit(1)
+        raise SystemExit(1) from None
     except httpx.HTTPStatusError as exc:
         logger.error(
             "API health check failed: %s %s", exc.response.status_code, exc.response.text
         )
-        raise SystemExit(1)
+        raise SystemExit(1) from None
 
 
 def main() -> None:
