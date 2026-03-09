@@ -21,6 +21,7 @@ from typing import Literal, NoReturn
 import httpx
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
+from fastmcp.prompts.prompt import Prompt as _BasePrompt
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # ---------------------------------------------------------------------------
@@ -746,10 +747,21 @@ def list_dialects() -> str:
 # ---------------------------------------------------------------------------
 
 
-@mcp.prompt
-def write_obml_model() -> str:
-    """OBML syntax reference — how to write a semantic model in YAML."""
-    return """\
+class StaticPrompt(_BasePrompt):
+    """Prompt with static text exposed in prompts/list for Horizon compat."""
+
+    text: str
+
+    def to_mcp_prompt(self, **overrides):  # type: ignore[override]
+        result = super().to_mcp_prompt(**overrides)
+        result.text = self.text  # type: ignore[attr-defined]  # extra="allow"
+        return result
+
+    async def render(self, arguments=None):  # type: ignore[override]
+        return self.text
+
+
+_WRITE_OBML_MODEL_TEXT = """\
 # OBML (OrionBelt ML) Syntax Reference
 
 An OBML model is a YAML file with four top-level sections:
@@ -837,11 +849,7 @@ any_value, median, mode, listagg
 3. `compile_query(model_id, ...)` → generate SQL
 """
 
-
-@mcp.prompt
-def write_query() -> str:
-    """How to use the compile_query tool — simple and full modes."""
-    return """\
+_WRITE_QUERY_TEXT = """\
 # Compiling Queries with OrionBelt
 
 ## Simple Mode
@@ -901,11 +909,7 @@ compile_query(
 - Dimension names with time grain: append `:month`, `:year`, etc.
 """
 
-
-@mcp.prompt
-def debug_validation() -> str:
-    """All OBML validation error codes with causes and fixes."""
-    return """\
+_DEBUG_VALIDATION_TEXT = """\
 # OBML Validation Error Codes
 
 ## Parse Errors
@@ -993,6 +997,22 @@ from the query's join graph.
 3. Fix the YAML and re-validate.
 4. Once valid, use `load_model(model_yaml)` to load it.
 """
+
+mcp.add_prompt(StaticPrompt(
+    name="write_obml_model",
+    description="OBML syntax reference — how to write a semantic model in YAML.",
+    text=_WRITE_OBML_MODEL_TEXT,
+))
+mcp.add_prompt(StaticPrompt(
+    name="write_query",
+    description="How to use the compile_query tool — simple and full modes.",
+    text=_WRITE_QUERY_TEXT,
+))
+mcp.add_prompt(StaticPrompt(
+    name="debug_validation",
+    description="All OBML validation error codes with causes and fixes.",
+    text=_DEBUG_VALIDATION_TEXT,
+))
 
 
 # ---------------------------------------------------------------------------

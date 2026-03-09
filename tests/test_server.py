@@ -540,21 +540,21 @@ def test_health_check_server_error(mock_api: respx.MockRouter):
 
 def test_write_obml_model_prompt():
     """write_obml_model prompt returns OBML syntax reference."""
-    result = server.write_obml_model()
+    result = server._WRITE_OBML_MODEL_TEXT
     assert "OBML" in result
     assert "dataObjects" in result
 
 
 def test_write_query_prompt():
     """write_query prompt returns query compilation guide."""
-    result = server.write_query()
+    result = server._WRITE_QUERY_TEXT
     assert "Simple Mode" in result
     assert "Full Mode" in result
 
 
 def test_debug_validation_prompt():
     """debug_validation prompt returns error codes."""
-    result = server.debug_validation()
+    result = server._DEBUG_VALIDATION_TEXT
     assert "YAML_PARSE_ERROR" in result
     assert "UNKNOWN_COLUMN" in result
 
