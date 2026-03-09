@@ -303,9 +303,7 @@ def test_compile_query_invalid_json():
 def test_list_models_empty(mock_api: respx.MockRouter):
     """list_models returns a message when no models are loaded."""
     _mock_create_session(mock_api)
-    mock_api.get("/sessions/test-session-1/models").mock(
-        return_value=httpx.Response(200, json=[])
-    )
+    mock_api.get("/sessions/test-session-1/models").mock(return_value=httpx.Response(200, json=[]))
 
     result = server.list_models()
     assert "No models loaded" in result
@@ -379,17 +377,13 @@ def test_list_dialects(mock_api: respx.MockRouter):
 def test_session_created_once(mock_api: respx.MockRouter):
     """Session is created only once and reused for subsequent calls."""
     _mock_create_session(mock_api)
-    mock_api.get("/sessions/test-session-1/models").mock(
-        return_value=httpx.Response(200, json=[])
-    )
+    mock_api.get("/sessions/test-session-1/models").mock(return_value=httpx.Response(200, json=[]))
 
     server.list_models()
     server.list_models()
 
     # POST /sessions should have been called exactly once
-    session_calls = [
-        call for call in mock_api.calls if call.request.url.path == "/sessions"
-    ]
+    session_calls = [call for call in mock_api.calls if call.request.url.path == "/sessions"]
     assert len(session_calls) == 1
 
 
@@ -426,9 +420,7 @@ def test_session_retry_on_404(mock_api: respx.MockRouter):
     )
 
     # Retry call succeeds with new session
-    mock_api.get("/sessions/session-new/models").mock(
-        return_value=httpx.Response(200, json=[])
-    )
+    mock_api.get("/sessions/session-new/models").mock(return_value=httpx.Response(200, json=[]))
 
     result = server.list_models()
     assert "No models loaded" in result
@@ -452,9 +444,7 @@ def test_session_not_invalidated_on_model_404(mock_api: respx.MockRouter):
     with pytest.raises(ToolError, match="API error.*404"):
         server.describe_model("no-such-model")
 
-    session_calls = [
-        call for call in mock_api.calls if call.request.url.path == "/sessions"
-    ]
+    session_calls = [call for call in mock_api.calls if call.request.url.path == "/sessions"]
     assert len(session_calls) == 0
     assert server._api_session_id == "session-old"
 
@@ -471,9 +461,7 @@ def test_session_not_invalidated_on_plain_text_404(mock_api: respx.MockRouter):
     with pytest.raises(ToolError, match="API error.*404"):
         server.describe_model("missing")
 
-    session_calls = [
-        call for call in mock_api.calls if call.request.url.path == "/sessions"
-    ]
+    session_calls = [call for call in mock_api.calls if call.request.url.path == "/sessions"]
     assert len(session_calls) == 0
     assert server._api_session_id == "session-old"
 
@@ -499,22 +487,14 @@ def test_api_error_raises_tool_error(mock_api: respx.MockRouter):
         server.load_model("bad yaml")
 
 
-def test_connect_error_raises_tool_error():
+def test_connect_error_raises_tool_error(monkeypatch):
     """Connection errors are raised as ToolError."""
     from fastmcp.exceptions import ToolError
 
-    original_url = server.settings.api_base_url
-
-    # Point to a non-existent host
-    server.settings.api_base_url = "http://127.0.0.1:1"
-    server._http_client = None  # Force new client
+    monkeypatch.setattr(server.settings, "api_base_url", "http://127.0.0.1:1")
 
     with pytest.raises(ToolError, match="Cannot connect"):
         server.list_dialects()
-
-    # Restore
-    server.settings.api_base_url = original_url
-    server._http_client = None
 
 
 # ---------------------------------------------------------------------------
@@ -524,24 +504,17 @@ def test_connect_error_raises_tool_error():
 
 def test_health_check_passes(mock_api: respx.MockRouter):
     """_check_api_health succeeds when /health returns 200."""
-    mock_api.get("/health").mock(
-        return_value=httpx.Response(200, json={"status": "ok"})
-    )
+    mock_api.get("/health").mock(return_value=httpx.Response(200, json={"status": "ok"}))
     # Should not raise
     server._check_api_health()
 
 
-def test_health_check_connect_error():
+def test_health_check_connect_error(monkeypatch):
     """_check_api_health exits on connection error."""
-    original_url = server.settings.api_base_url
-    server.settings.api_base_url = "http://127.0.0.1:1"
-    server._http_client = None
+    monkeypatch.setattr(server.settings, "api_base_url", "http://127.0.0.1:1")
 
     with pytest.raises(SystemExit, match="1"):
         server._check_api_health()
-
-    server.settings.api_base_url = original_url
-    server._http_client = None
 
 
 def test_health_check_timeout(mock_api: respx.MockRouter):
@@ -554,9 +527,7 @@ def test_health_check_timeout(mock_api: respx.MockRouter):
 
 def test_health_check_server_error(mock_api: respx.MockRouter):
     """_check_api_health exits on 5xx."""
-    mock_api.get("/health").mock(
-        return_value=httpx.Response(503, text="Service Unavailable")
-    )
+    mock_api.get("/health").mock(return_value=httpx.Response(503, text="Service Unavailable"))
 
     with pytest.raises(SystemExit, match="1"):
         server._check_api_health()

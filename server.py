@@ -15,7 +15,8 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Literal
+import threading
+from typing import Literal, NoReturn
 
 import httpx
 from fastmcp import FastMCP
@@ -58,6 +59,7 @@ mcp = FastMCP("OrionBelt Semantic Layer")
 # Internal session management
 # ---------------------------------------------------------------------------
 
+_state_lock = threading.RLock()
 _api_session_id: str | None = None
 _http_client: httpx.Client | None = None
 
@@ -66,11 +68,13 @@ def _get_client() -> httpx.Client:
     """Get or create the shared httpx client."""
     global _http_client
     if _http_client is None:
-        _http_client = httpx.Client(
-            base_url=settings.api_base_url,
-            timeout=settings.api_timeout,
-            headers={"User-Agent": "OrionBelt-MCP/1.0"},
-        )
+        with _state_lock:
+            if _http_client is None:  # double-check under lock
+                _http_client = httpx.Client(
+                    base_url=settings.api_base_url,
+                    timeout=settings.api_timeout,
+                    headers={"User-Agent": "OrionBelt-MCP/1.0"},
+                )
     return _http_client
 
 
@@ -96,15 +100,18 @@ def _ensure_session() -> str:
     """Return the cached session ID, creating one if needed."""
     global _api_session_id
     if _api_session_id is None:
-        _api_session_id = _create_api_session()
-        logger.info("Created API session: %s", _api_session_id)
+        with _state_lock:
+            if _api_session_id is None:  # double-check under lock
+                _api_session_id = _create_api_session()
+                logger.info("Created API session: %s", _api_session_id)
     return _api_session_id
 
 
 def _invalidate_session() -> None:
     """Clear the cached session ID (e.g. on 404)."""
     global _api_session_id
-    _api_session_id = None
+    with _state_lock:
+        _api_session_id = None
 
 
 # ---------------------------------------------------------------------------
@@ -117,11 +124,11 @@ def _parse_error_detail(response: httpx.Response) -> str:
     try:
         body = response.json()
         return str(body.get("detail", response.text))
-    except Exception:
+    except (ValueError, json.JSONDecodeError):
         return response.text
 
 
-def _raise_api_error(response: httpx.Response, detail: str | None = None) -> None:
+def _raise_api_error(response: httpx.Response, detail: str | None = None) -> NoReturn:
     """Raise ToolError from an API error response."""
     if detail is None:
         detail = _parse_error_detail(response)
@@ -129,12 +136,40 @@ def _raise_api_error(response: httpx.Response, detail: str | None = None) -> Non
 
 
 def _is_session_expired(response: httpx.Response) -> bool:
-    """Return True if the API error indicates an expired/missing session."""
+    """Return True if the API error indicates an expired/missing session.
+
+    Checks for a structured ``code`` field first, then falls back to string
+    matching on the detail message.
+    """
     if response.status_code != 404:
         return False
-    detail = _parse_error_detail(response)
-    lowered = detail.lower()
-    return "session" in lowered and "not found" in lowered
+    try:
+        body = response.json()
+    except (ValueError, json.JSONDecodeError):
+        return False
+    # Prefer structured error code when available
+    if body.get("code") == "SESSION_NOT_FOUND":
+        return True
+    # Fallback: match on detail text
+    detail = str(body.get("detail", "")).lower()
+    return "session" in detail and "not found" in detail
+
+
+def _do_request(
+    client: httpx.Client,
+    method: str,
+    path: str,
+    json_body: dict | None,
+) -> httpx.Response:
+    """Execute a single HTTP request, wrapping connection/timeout errors."""
+    try:
+        return client.request(method, path, json=json_body)
+    except httpx.ConnectError:
+        raise ToolError(
+            f"Cannot connect to OrionBelt Semantic Layer API at {settings.api_base_url}"
+        ) from None
+    except httpx.TimeoutException:
+        raise ToolError("API request timed out") from None
 
 
 def _api_request(
@@ -143,40 +178,23 @@ def _api_request(
     *,
     json_body: dict | None = None,
     retry_on_expired: bool = True,
+    path_suffix: str | None = None,
 ) -> httpx.Response:
     """Make an API request with auto-session retry.
 
     If the session returns 404 and retry_on_expired is True,
-    re-create the session and retry once.
+    re-create the session and retry once.  When *path_suffix* is provided,
+    the retry reconstructs the path from the new session ID.
     """
     client = _get_client()
-    try:
-        resp = client.request(method, path, json=json_body)
-    except httpx.ConnectError:
-        raise ToolError(
-            f"Cannot connect to OrionBelt Semantic Layer API at {settings.api_base_url}"
-        ) from None
-    except httpx.TimeoutException:
-        raise ToolError("API request timed out") from None
+    resp = _do_request(client, method, path, json_body)
 
-    if _is_session_expired(resp) and retry_on_expired and "/sessions/" in path:
-        # Session may have expired — recreate and retry once
+    if _is_session_expired(resp) and retry_on_expired and path_suffix is not None:
+        # Session expired — recreate and retry once
         _invalidate_session()
         sid = _ensure_session()
-        # Replace the old session ID in the path
-        parts = path.split("/")
-        # path format: /sessions/{id}/...
-        if len(parts) >= 3:
-            parts[2] = sid
-        new_path = "/".join(parts)
-        try:
-            resp = client.request(method, new_path, json=json_body)
-        except httpx.ConnectError:
-            raise ToolError(
-                f"Cannot connect to OrionBelt Semantic Layer API at {settings.api_base_url}"
-            ) from None
-        except httpx.TimeoutException:
-            raise ToolError("API request timed out") from None
+        new_path = f"/sessions/{sid}{path_suffix}"
+        resp = _do_request(client, method, new_path, json_body)
 
     if resp.status_code >= 400:
         _raise_api_error(resp)
@@ -196,7 +214,7 @@ def _session_request(
     """
     sid = _ensure_session()
     path = f"/sessions/{sid}{path_suffix}"
-    return _api_request(method, path, json_body=json_body)
+    return _api_request(method, path, json_body=json_body, path_suffix=path_suffix)
 
 
 # ---------------------------------------------------------------------------
@@ -574,8 +592,7 @@ def describe_model(model_id: str) -> str:
     for dim in desc.get("dimensions", []):
         grain = f"  grain={dim['time_grain']}" if dim.get("time_grain") else ""
         lines.append(
-            f"  {dim['name']}  ({dim['result_type']}, "
-            f"{dim['data_object']}.{dim['column']}{grain})"
+            f"  {dim['name']}  ({dim['result_type']}, {dim['data_object']}.{dim['column']}{grain})"
         )
         if dim.get("synonyms"):
             lines.append(f"    synonyms: {', '.join(dim['synonyms'])}")
@@ -987,24 +1004,17 @@ def _check_api_health() -> None:
     """Check that the OrionBelt Semantic Layer API is reachable at startup."""
     client = _get_client()
     try:
-        resp = client.get("/health")
+        resp = _do_request(client, "GET", "/health", None)
         resp.raise_for_status()
         logger.info("API health check passed (%s)", settings.api_base_url)
-    except httpx.ConnectError:
+    except ToolError:
         logger.error(
-            "Cannot connect to OrionBelt Semantic Layer API at %s — is the service running?",
+            "Cannot reach OrionBelt Semantic Layer API at %s — is the service running?",
             settings.api_base_url,
         )
         raise SystemExit(1) from None
-    except httpx.TimeoutException:
-        logger.error(
-            "API health check timed out (%s)", settings.api_base_url
-        )
-        raise SystemExit(1) from None
     except httpx.HTTPStatusError as exc:
-        logger.error(
-            "API health check failed: %s %s", exc.response.status_code, exc.response.text
-        )
+        logger.error("API health check failed: %s %s", exc.response.status_code, exc.response.text)
         raise SystemExit(1) from None
 
 
