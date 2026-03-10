@@ -138,7 +138,7 @@ The OrionBelt Semantic Layer MCP server is available as a hosted live demo on [P
 ### Quick start with Claude Desktop
 
 1. Download the Desktop Extension:
-   [orionbelt-semantic-layer.dxt](https://orionbelt-semantic-layer.fastmcp.app/manifest.dxt?v=371e7521-55de-4d82-a65d-cd5dd278daf8)
+   [orionbelt-semantic-layer.dxt](https://orionbelt-semantic-layer.fastmcp.app/manifest.dxt)
 2. Open the `.dxt` file in [Claude Desktop](https://claude.ai/download)
    (requires Claude Desktop with MCP support)
 
