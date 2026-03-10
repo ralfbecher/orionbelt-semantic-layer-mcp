@@ -138,6 +138,14 @@ uv run ruff format server.py tests/
 
 The OrionBelt Semantic Layer MCP server is available as a hosted live demo on [Prefect Horizon](https://horizon.prefect.io), a managed platform for deploying MCP servers.
 
+### MCP URL
+
+Use this URL to connect any MCP-compatible client to the hosted server (no authentication required):
+
+```
+https://orionbelt-semantic-layer.fastmcp.app/mcp
+```
+
 ### Quick start with Claude Desktop
 
 1. Download the Desktop Extension:
