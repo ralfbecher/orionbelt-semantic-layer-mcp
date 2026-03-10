@@ -7,7 +7,7 @@
 
 <p align="center"><strong>Thin MCP server that delegates to the OrionBelt Semantic Layer REST API</strong></p>
 
-[![Version 0.5.0](https://img.shields.io/badge/version-0.5.0-purple.svg)](https://github.com/ralfbecher/orionbelt-semantic-layer-mcp/releases)
+[![Version 0.7.0](https://img.shields.io/badge/version-0.7.0-purple.svg)](https://github.com/ralfbecher/orionbelt-semantic-layer-mcp/releases)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://github.com/ralfbecher/orionbelt-semantic-layer-mcp/blob/main/LICENSE)
 [![FastMCP](https://img.shields.io/badge/FastMCP-3.0+-8A2BE2)](https://gofastmcp.com)
@@ -31,7 +31,7 @@ LLM Client  ──MCP──>  server.py  ──HTTP──>  OrionBelt Semantic L
 
 - **No business logic** — all tool calls delegate to the REST API
 - **Auto-session management** — creates an API session on first tool call, caches the ID
-- **7 tools** for model loading, validation, querying, and introspection
+- **10 tools** for model loading, validation, querying, diagrams, and format conversion
 - **3 prompts + 1 resource** for OBML reference and usage guidance
 
 ## Live Demo
@@ -108,6 +108,9 @@ Environment variables or `.env` file (pydantic-settings). See `.env.example` for
 | `compile_query(...)`         | Compile a semantic query to SQL (simple + full mode) |
 | `list_models()`              | List all models loaded in the current session        |
 | `list_dialects()`            | List available SQL dialects and capabilities         |
+| `get_model_diagram(model_id)`| Generate a Mermaid ER diagram for a loaded model     |
+| `convert_osi_to_obml(input_yaml)` | Convert OSI YAML to OBML format               |
+| `convert_obml_to_osi(input_yaml)` | Convert OBML YAML to OSI format               |
 
 ## Supported SQL Dialects
 

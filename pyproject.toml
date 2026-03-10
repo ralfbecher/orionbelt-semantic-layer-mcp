@@ -1,14 +1,39 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [project]
 name = "orionbelt-semantic-layer-mcp"
-version = "0.5.0"
+version = "0.7.0"
 description = "Thin MCP server for OrionBelt Semantic Layer — delegates to REST API"
 requires-python = ">=3.12"
 license = "Apache-2.0"
+readme = "README.md"
+authors = [
+    {name = "Ralf Becher, RALFORION d.o.o.", email = "ralf.becher@web.de"}
+]
+keywords = ["mcp", "semantic-layer", "orionbelt", "llm"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: Apache Software License",
+    "Topic :: Software Development :: Libraries",
+]
 dependencies = [
     "fastmcp>=3.0,<4",
     "httpx>=0.28",
     "pydantic-settings>=2.12",
 ]
+
+[project.urls]
+Homepage = "https://github.com/ralfbecher/orionbelt-semantic-layer-mcp"
+Repository = "https://github.com/ralfbecher/orionbelt-semantic-layer-mcp"
+Issues = "https://github.com/ralfbecher/orionbelt-semantic-layer-mcp/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]
+only-include = ["server.py"]
 
 [dependency-groups]
 dev = [

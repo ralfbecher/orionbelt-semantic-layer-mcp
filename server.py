@@ -742,6 +742,101 @@ def list_dialects() -> str:
     return "\n".join(lines)
 
 
+@mcp.tool
+def get_model_diagram(
+    model_id: str,
+    show_columns: bool = True,
+    theme: str = "default",
+) -> str:
+    """Generate a Mermaid ER diagram for a loaded model.
+
+    Returns a Mermaid diagram script that visualises the data objects,
+    columns, and join relationships in the model.
+
+    Args:
+        model_id: The id returned by ``load_model``.
+        show_columns: Whether to include column details in the diagram.
+        theme: Mermaid diagram theme (e.g. "default", "dark", "forest").
+    """
+    params = f"?show_columns={str(show_columns).lower()}&theme={theme}"
+    resp = _session_request("GET", f"/models/{model_id}/diagram/er{params}")
+    data = resp.json()
+    return data["mermaid"]
+
+
+@mcp.tool
+def convert_osi_to_obml(input_yaml: str) -> str:
+    """Convert an OSI (Open Semantic Interchange) YAML model to OBML format.
+
+    Takes an OSI-format YAML string and returns the equivalent OBML YAML
+    along with any conversion warnings and validation results.
+
+    Args:
+        input_yaml: OSI YAML content to convert.
+    """
+    resp = _api_request(
+        "POST",
+        "/convert/osi-to-obml",
+        json_body={"input_yaml": input_yaml},
+        retry_on_expired=False,
+    )
+    data = resp.json()
+
+    parts = [data["output_yaml"]]
+    if data.get("warnings"):
+        parts.append(f"\nWarnings: {'; '.join(data['warnings'])}")
+    validation = data.get("validation", {})
+    if not validation.get("schema_valid", True) or not validation.get("semantic_valid", True):
+        errors = validation.get("schema_errors", []) + validation.get("semantic_errors", [])
+        parts.append(f"\nValidation errors: {'; '.join(errors)}")
+    if validation.get("semantic_warnings"):
+        parts.append(f"\nValidation warnings: {'; '.join(validation['semantic_warnings'])}")
+    return "\n".join(parts)
+
+
+@mcp.tool
+def convert_obml_to_osi(
+    input_yaml: str,
+    model_name: str = "semantic_model",
+    model_description: str = "",
+    ai_instructions: str = "",
+) -> str:
+    """Convert an OBML YAML model to OSI (Open Semantic Interchange) format.
+
+    Takes an OBML-format YAML string and returns the equivalent OSI YAML
+    along with any conversion warnings and validation results.
+
+    Args:
+        input_yaml: OBML YAML content to convert.
+        model_name: Name for the OSI model.
+        model_description: Description for the OSI model.
+        ai_instructions: AI instructions for the OSI model.
+    """
+    resp = _api_request(
+        "POST",
+        "/convert/obml-to-osi",
+        json_body={
+            "input_yaml": input_yaml,
+            "model_name": model_name,
+            "model_description": model_description,
+            "ai_instructions": ai_instructions,
+        },
+        retry_on_expired=False,
+    )
+    data = resp.json()
+
+    parts = [data["output_yaml"]]
+    if data.get("warnings"):
+        parts.append(f"\nWarnings: {'; '.join(data['warnings'])}")
+    validation = data.get("validation", {})
+    if not validation.get("schema_valid", True) or not validation.get("semantic_valid", True):
+        errors = validation.get("schema_errors", []) + validation.get("semantic_errors", [])
+        parts.append(f"\nValidation errors: {'; '.join(errors)}")
+    if validation.get("semantic_warnings"):
+        parts.append(f"\nValidation warnings: {'; '.join(validation['semantic_warnings'])}")
+    return "\n".join(parts)
+
+
 # ---------------------------------------------------------------------------
 # Prompts
 # ---------------------------------------------------------------------------
