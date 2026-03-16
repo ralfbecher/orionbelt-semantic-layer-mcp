@@ -311,7 +311,7 @@ def test_compile_query_with_explain(mock_api: respx.MockRouter):
                     "where_filter_count": 0,
                     "having_filter_count": 0,
                     "has_totals": False,
-                    "cfl_legs": 0,
+                    "cfl_legs": [],
                 },
             },
         )

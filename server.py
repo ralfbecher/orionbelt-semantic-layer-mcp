@@ -731,8 +731,20 @@ def compile_query(
             parts.append(
                 f"--   Join: {j['from_object']} -> {j['to_object']} ({j.get('reason', '')})"
             )
+        cfl_legs = exp.get("cfl_legs", [])
+        if cfl_legs:
+            for leg in cfl_legs:
+                measures = ", ".join(leg.get("measures", []))
+                parts.append(
+                    f"--   CFL leg: {leg['measure_source']} "
+                    f"(root: {leg['common_root']}, measures: {measures})"
+                )
+                if leg.get("reason"):
+                    parts.append(f"--     Reason: {leg['reason']}")
+                for jn in leg.get("joins", []):
+                    parts.append(f"--     Join: {jn}")
         if exp.get("has_totals"):
-            parts.append(f"-- Totals: yes (CFL legs: {exp.get('cfl_legs', 0)})")
+            parts.append("-- Totals: yes")
     if data.get("warnings"):
         parts.append("")
         parts.append(f"-- Warnings: {'; '.join(data['warnings'])}")
