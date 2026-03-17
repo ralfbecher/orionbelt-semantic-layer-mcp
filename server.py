@@ -658,7 +658,7 @@ def compile_query(
         )
 
     The full query JSON supports: ``select`` (dimensions + measures), ``where``,
-    ``having``, ``order_by``, ``limit``, ``usePathNames``.
+    ``having``, ``order_by``, ``limit``, ``offset``, ``usePathNames``.
 
     Use ``describe_model`` first to discover available dimension and measure
     names.  Filter operators: equals, notequals, gt, gte, lt, lte, inlist,
@@ -748,6 +748,107 @@ def compile_query(
     if data.get("warnings"):
         parts.append("")
         parts.append(f"-- Warnings: {'; '.join(data['warnings'])}")
+    return "\n".join(parts)
+
+
+@mcp.tool
+def execute_query(
+    model_id: str,
+    dialect: str = "postgres",
+    dimensions: list[str] | None = None,
+    measures: list[str] | None = None,
+    query_json: str | None = None,
+    use_path_names: list[dict[str, str]] | None = None,
+) -> str:
+    """Compile and execute a semantic query, returning SQL and result data.
+
+    Requires the API to have ``FLIGHT_ENABLED=true`` configured. Returns the
+    compiled SQL, column metadata, and the actual query results from the
+    database.
+
+    Two modes (same as ``compile_query``):
+
+    **Simple mode** — pass ``dimensions`` and ``measures`` lists directly::
+
+        execute_query(model_id="abc12345", dimensions=["Country"], measures=["Revenue"])
+
+    **Full mode** — pass a complete query as JSON via ``query_json``::
+
+        execute_query(
+            model_id="abc12345",
+            query_json='{"select":{"dimensions":["Country"],"measures":["Revenue"]},"limit":100}'
+        )
+
+    The full query JSON supports: ``select`` (dimensions + measures), ``where``,
+    ``having``, ``order_by``, ``limit``, ``offset``, ``usePathNames``.
+
+    If no ``limit`` is specified, a default of 10,000 rows is enforced.
+
+    Args:
+        model_id: The id returned by ``load_model``.
+        dialect: Target SQL dialect (postgres, snowflake, bigquery, clickhouse, etc.).
+        dimensions: List of dimension names (simple mode).
+        measures: List of measure names (simple mode).
+        query_json: Full query object as JSON string (full mode).
+        use_path_names: List of {source, target, pathName} dicts for
+            selecting secondary joins (simple mode).
+    """
+    logger.info("execute_query called (model_id=%s, dialect=%s)", model_id, dialect)
+
+    # Build the query object (same logic as compile_query)
+    if query_json is not None:
+        try:
+            query = json.loads(query_json)
+        except json.JSONDecodeError as exc:
+            raise ToolError(f"Invalid query JSON: {exc}") from exc
+    elif dimensions is not None or measures is not None:
+        query: dict = {  # type: ignore[no-redef]
+            "select": {
+                "dimensions": dimensions or [],
+                "measures": measures or [],
+            },
+        }
+        if use_path_names:
+            query["usePathNames"] = use_path_names
+    else:
+        raise ToolError(
+            "Provide either dimensions/measures (simple mode) or query_json (full mode)."
+        )
+
+    resp = _session_request(
+        "POST",
+        "/query/execute",
+        json_body={"model_id": model_id, "dialect": dialect, "query": query},
+    )
+    data = _parse_json(resp)
+
+    parts = [
+        f"-- Dialect: {data['dialect']}",
+        f"-- Rows: {data.get('row_count', 0)}",
+        f"-- Execution time: {data.get('execution_time_ms', 0)}ms",
+        "",
+        data["sql"],
+        "",
+    ]
+
+    # Format result data as a table
+    columns = data.get("columns", [])
+    rows = data.get("rows", [])
+    if columns and rows:
+        col_names = [c["name"] for c in columns]
+        parts.append("RESULTS:")
+        parts.append("  | " + " | ".join(col_names) + " |")
+        parts.append("  |" + "|".join("---" for _ in col_names) + "|")
+        for row in rows:
+            vals = [str(row.get(c, "")) for c in col_names]
+            parts.append("  | " + " | ".join(vals) + " |")
+    elif columns:
+        parts.append("No rows returned.")
+
+    if data.get("warnings"):
+        parts.append("")
+        parts.append(f"-- Warnings: {'; '.join(data['warnings'])}")
+
     return "\n".join(parts)
 
 
@@ -1029,7 +1130,7 @@ def get_settings() -> str:
     """Get API configuration settings.
 
     Returns whether the API is in single-model mode, the session TTL,
-    and any pre-loaded model YAML.
+    Flight SQL status, and any pre-loaded model YAML.
     """
     resp = _api_request("GET", f"{_API_V1}/settings", retry_on_expired=False)
     data = _parse_json(resp)
@@ -1038,6 +1139,15 @@ def get_settings() -> str:
     lines.append(f"  Session TTL: {data.get('session_ttl_seconds', 'N/A')}s")
     if data.get("model_yaml"):
         lines.append(f"  Pre-loaded model: yes ({len(data['model_yaml'])} chars)")
+    flight = data.get("flight")
+    if flight:
+        lines.append(f"  Flight SQL: enabled (port {flight.get('port', 'N/A')})")
+        lines.append(f"  DB vendor: {flight.get('db_vendor', 'N/A')}")
+        lines.append(f"  Auth mode: {flight.get('auth_mode', 'none')}")
+        lines.append("  Query execution: available (use execute_query tool)")
+    else:
+        lines.append("  Flight SQL: not enabled")
+        lines.append("  Query execution: not available")
     return "\n".join(lines)
 
 
