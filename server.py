@@ -822,34 +822,7 @@ def execute_query(
     )
     data = _parse_json(resp)
 
-    parts = [
-        f"-- Dialect: {data['dialect']}",
-        f"-- Rows: {data.get('row_count', 0)}",
-        f"-- Execution time: {data.get('execution_time_ms', 0)}ms",
-        "",
-        data["sql"],
-        "",
-    ]
-
-    # Format result data as a table
-    columns = data.get("columns", [])
-    rows = data.get("rows", [])
-    if columns and rows:
-        col_names = [c["name"] for c in columns]
-        parts.append("RESULTS:")
-        parts.append("  | " + " | ".join(col_names) + " |")
-        parts.append("  |" + "|".join("---" for _ in col_names) + "|")
-        for row in rows:
-            vals = [str(row.get(c, "")) for c in col_names]
-            parts.append("  | " + " | ".join(vals) + " |")
-    elif columns:
-        parts.append("No rows returned.")
-
-    if data.get("warnings"):
-        parts.append("")
-        parts.append(f"-- Warnings: {'; '.join(data['warnings'])}")
-
-    return "\n".join(parts)
+    return json.dumps(data, indent=2)
 
 
 @mcp.tool
