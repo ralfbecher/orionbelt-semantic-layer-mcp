@@ -63,7 +63,7 @@ All API endpoints use the `/v1/` prefix (since API v1.0.0).
 | `validate_model(model_yaml)` | `POST /v1/sessions/{id}/validate` | Always 200 |
 | `describe_model(model_id)` | `GET /v1/sessions/{id}/models/{mid}` | Formats nested JSON |
 | `compile_query(...)` | `POST /v1/sessions/{id}/query/sql` | Simple + full mode, includes explain plan |
-| `execute_query(...)` | `POST /v1/sessions/{id}/query/execute` | Compile + execute, requires FLIGHT_ENABLED |
+| `execute_query(...)` | `POST /v1/sessions/{id}/query/execute` | Compile + execute, requires QUERY_EXECUTE or FLIGHT_ENABLED |
 | `list_models()` | `GET /v1/sessions/{id}/models` | Lists models in session |
 | `list_dialects()` | `GET /v1/dialects` | No session needed |
 | `get_model_diagram(...)` | `GET /v1/sessions/{id}/models/{mid}/diagram/er` | Mermaid ER diagram |
