@@ -459,6 +459,7 @@ def test_list_dialects(mock_api: respx.MockRouter):
                             "union_all_by_name": False,
                             "window_functions": True,
                         },
+                        "unsupported_aggregations": [],
                     },
                     {
                         "name": "snowflake",
@@ -466,6 +467,15 @@ def test_list_dialects(mock_api: respx.MockRouter):
                             "union_all_by_name": True,
                             "window_functions": True,
                         },
+                        "unsupported_aggregations": [],
+                    },
+                    {
+                        "name": "mysql",
+                        "capabilities": {
+                            "union_all_by_name": False,
+                            "window_functions": True,
+                        },
+                        "unsupported_aggregations": ["median"],
                     },
                 ]
             },
@@ -475,7 +485,9 @@ def test_list_dialects(mock_api: respx.MockRouter):
     result = server.list_dialects()
     assert "postgres" in result
     assert "snowflake" in result
+    assert "mysql" in result
     assert "union_all_by_name" in result
+    assert "unsupported aggregations: median" in result
 
 
 # ---------------------------------------------------------------------------
@@ -1113,6 +1125,32 @@ def test_api_error_raises_tool_error(mock_api: respx.MockRouter):
 
     with pytest.raises(ToolError, match="API error.*422"):
         server.load_model("bad yaml")
+
+
+def test_unsupported_aggregation_error(mock_api: respx.MockRouter):
+    """422 UnsupportedAggregationError returns readable message."""
+    from fastmcp.exceptions import ToolError
+
+    _mock_create_session(mock_api)
+    mock_api.post("/v1/sessions/test-session-1/query/sql").mock(
+        return_value=httpx.Response(
+            422,
+            json={
+                "detail": {
+                    "error": "Unsupported aggregation",
+                    "message": "Dialect 'mysql' does not support aggregation 'median'",
+                    "dialect": "mysql",
+                    "aggregation": "median",
+                }
+            },
+        )
+    )
+
+    with pytest.raises(
+        ToolError,
+        match="Dialect 'mysql' does not support aggregation 'median'",
+    ):
+        server.compile_query(model_id="m001", dialect="mysql", measures=["Median Revenue"])
 
 
 def test_connect_error_raises_tool_error(monkeypatch):

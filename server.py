@@ -136,7 +136,11 @@ def _parse_error_detail(response: httpx.Response) -> str:
     """Extract error detail string from an API error response."""
     try:
         body = response.json()
-        return str(body.get("detail", response.text))
+        detail = body.get("detail", response.text)
+        # Structured error detail (e.g. UnsupportedAggregationError)
+        if isinstance(detail, dict):
+            return detail.get("message", str(detail))
+        return str(detail)
     except (ValueError, json.JSONDecodeError):
         return response.text
 
@@ -704,7 +708,11 @@ def list_dialects() -> str:
         caps = d.get("capabilities", {})
         enabled = [k for k, v in caps.items() if v]
         cap_str = ", ".join(enabled) if enabled else "(none)"
-        lines.append(f"  {d['name']}: {cap_str}")
+        unsupported = d.get("unsupported_aggregations", [])
+        line = f"  {d['name']}: {cap_str}"
+        if unsupported:
+            line += f"  (unsupported aggregations: {', '.join(unsupported)})"
+        lines.append(line)
     return "\n".join(lines)
 
 
