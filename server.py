@@ -89,12 +89,17 @@ def _get_client() -> httpx.Client:
     if _http_client is None:
         with _state_lock:
             if _http_client is None:  # double-check under lock
+                try:
+                    version = importlib.metadata.version(
+                        "orionbelt-semantic-layer-mcp"
+                    )
+                except importlib.metadata.PackageNotFoundError:
+                    version = "dev"
                 _http_client = httpx.Client(
                     base_url=settings.api_base_url,
                     timeout=settings.api_timeout,
                     headers={
-                        "User-Agent": "OrionBelt-MCP/"
-                        + importlib.metadata.version("orionbelt-semantic-layer-mcp")
+                        "User-Agent": f"OrionBelt-MCP/{version}"
                     },
                 )
     return _http_client
@@ -1805,6 +1810,8 @@ def main() -> None:
     except KeyboardInterrupt:
         logger.info("Shutting down…")
     finally:
+        global _http_client, _api_session_id
+
         # Best-effort session cleanup
         if _api_session_id is not None:
             try:
@@ -1813,8 +1820,12 @@ def main() -> None:
                 logger.info("Cleaned up API session: %s", _api_session_id)
             except Exception:
                 logger.debug("Session cleanup failed (API TTL will handle it)")
+            finally:
+                _api_session_id = None
+
         if _http_client is not None:
             _http_client.close()
+            _http_client = None
 
 
 if __name__ == "__main__":

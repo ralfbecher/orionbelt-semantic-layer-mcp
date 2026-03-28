@@ -1854,3 +1854,58 @@ def test_obml_reference_resource(mock_api):
     result = server.obml_reference()
     assert "OBML" in result
     assert "dataObjects" in result
+
+
+# ---------------------------------------------------------------------------
+# Lifecycle tests (review findings #1 and #2)
+# ---------------------------------------------------------------------------
+
+
+def test_get_client_fallback_when_metadata_unavailable(mock_api, monkeypatch):
+    """_get_client() returns a usable client when package metadata is missing."""
+    import importlib.metadata
+
+    monkeypatch.setattr(
+        "importlib.metadata.version",
+        lambda _name: (_ for _ in ()).throw(
+            importlib.metadata.PackageNotFoundError("orionbelt-semantic-layer-mcp")
+        ),
+    )
+    client = server._get_client()
+    assert isinstance(client, httpx.Client)
+    assert "OrionBelt-MCP/dev" in client.headers["user-agent"]
+
+
+def test_shutdown_resets_global_state(mock_api):
+    """After shutdown cleanup, _get_client() returns a fresh open client."""
+    # Step 1: create a client and a session id
+    client_before = server._get_client()
+    server._api_session_id = "session-lifecycle"
+
+    # Step 2: simulate shutdown cleanup (the finally block in main())
+    mock_api.delete("/v1/sessions/session-lifecycle").mock(
+        return_value=httpx.Response(204)
+    )
+
+    # Run the cleanup logic directly
+    if server._api_session_id is not None:
+        try:
+            c = server._get_client()
+            c.delete(f"/v1/sessions/{server._api_session_id}")
+        except Exception:
+            pass
+        finally:
+            server._api_session_id = None
+
+    if server._http_client is not None:
+        server._http_client.close()
+        server._http_client = None
+
+    # Step 3: verify state is fully reset
+    assert server._http_client is None
+    assert server._api_session_id is None
+
+    # Step 4: a new _get_client() call should return a fresh, open client
+    client_after = server._get_client()
+    assert isinstance(client_after, httpx.Client)
+    assert client_after is not client_before
