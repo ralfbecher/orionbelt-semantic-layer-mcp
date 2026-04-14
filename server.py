@@ -1172,13 +1172,13 @@ def _register_multi_model_tools() -> None:
 
     @mcp.tool
     def load_model(model_yaml: str) -> str:
-        """Load an OBML YAML model into the session.
+        """Parse and store user-provided OBML YAML. Returns a model_id.
 
-        Call ``get_obml_reference()`` first to learn the OBML format before
-        composing the YAML.  Returns a model_id for use with other tools.
+        Do NOT call this tool unless the user or LLM has provided OBML YAML
+        content in the conversation. Call ``get_obml_reference()`` to learn the format.
 
         Args:
-            model_yaml: Complete OBML YAML content (must start with version: 1.0).
+            model_yaml: Complete OBML YAML string (starts with version: 1.0).
         """
         logger.info("load_model called (yaml length=%d)", len(model_yaml))
         resp = _session_request("POST", "/models", json_body={"model_yaml": model_yaml})
