@@ -67,12 +67,7 @@ _API_V1 = "/v1"
 # FastMCP server instance
 # ---------------------------------------------------------------------------
 
-try:
-    _mcp_version = importlib.metadata.version("orionbelt-semantic-layer-mcp")
-except importlib.metadata.PackageNotFoundError:
-    _mcp_version = "dev"
-
-mcp = FastMCP(f"OrionBelt Semantic Layer v{_mcp_version}")
+mcp = FastMCP("OrionBelt Semantic Layer")
 
 # ---------------------------------------------------------------------------
 # Internal state
