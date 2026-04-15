@@ -1171,15 +1171,21 @@ def _register_multi_model_tools() -> None:
     """Register tools for multi-model mode (requires model_id, session-scoped)."""
 
     @mcp.tool
-    def load_model(model_yaml: str) -> str:
+    def load_model(model_yaml: str | None = None) -> str:
         """Parse and store user-provided OBML YAML. Returns a model_id.
 
-        Do NOT call this tool unless the user or LLM has provided OBML YAML
-        content in the conversation. Call ``get_obml_reference()`` to learn the format.
+        ``model_yaml`` is mandatory. Do NOT call this tool unless the user or
+        LLM has provided OBML YAML content in the conversation.
+        Call ``get_obml_reference()`` to learn the format.
 
         Args:
-            model_yaml: Complete OBML YAML string (starts with version: 1.0).
+            model_yaml: (mandatory) Complete OBML YAML string (starts with version: 1.0).
         """
+        if not model_yaml:
+            raise ToolError(
+                "model_yaml is mandatory — provide the complete OBML YAML content. "
+                "Call get_obml_reference() first to learn the correct format."
+            )
         logger.info("load_model called (yaml length=%d)", len(model_yaml))
         resp = _session_request("POST", "/models", json_body={"model_yaml": model_yaml})
         data = _parse_json(resp)
