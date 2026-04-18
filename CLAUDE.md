@@ -13,8 +13,9 @@ LLM Client  ──MCP──▶  server.py  ──HTTP──▶  OrionBelt Semant
 
 - **No business logic** — all tool calls delegate to the REST API
 - **Two modes** — auto-detected at startup via `GET /v1/settings`
-  - **Multi-model mode**: 25 tools with `model_id`, session-scoped endpoints
-  - **Single-model mode**: 22 tools (no `load_model`/`remove_model`/`list_models`/`validate_model`; adds `get_model`; no `model_id`), shortcut endpoints
+  - **Multi-model mode**: 24–25 tools with `model_id`, session-scoped endpoints
+  - **Single-model mode**: 21–22 tools (no `load_model`/`remove_model`/`list_models`; adds `get_model`; no `model_id`), shortcut endpoints
+  - `execute_query` only registered when `QUERY_EXECUTE=true` in API settings
 - **3 prompts + 1 resource** — `write_obml_model` fetched from API; others static
 
 ## Commands
@@ -62,8 +63,7 @@ All API endpoints use the `/v1/` prefix (since API v1.0.0).
 | MCP Tool | API Endpoint | Notes |
 |----------|-------------|-------|
 | `get_obml_reference()` | `GET /v1/reference/obml` | Fetched from API, cached |
-| `load_model(model_yaml)` | `POST /v1/sessions/{id}/models` | Auto-creates session |
-| `validate_model(model_yaml)` | `POST /v1/sessions/{id}/validate` | Always 200 |
+| `load_model(model_yaml, extends?, inherits?)` | `POST /v1/sessions/{id}/models` | Auto-creates session; extends/inherits for composition |
 | `describe_model(model_id)` | `GET /v1/sessions/{id}/models/{mid}` | Formats nested JSON |
 | `compile_query(model_id, ...)` | `POST /v1/sessions/{id}/query/sql` | Simple + full mode, includes explain plan |
 | `execute_query(model_id, ...)` | `POST /v1/sessions/{id}/query/execute` | Compile + execute, requires QUERY_EXECUTE; tool hidden when unavailable |
@@ -123,6 +123,8 @@ The API supports three **metric types** and **measure filters**:
 - **Measure filters** — restrict aggregation to matching rows via `CASE WHEN` wrapping; supports leaf filters and nested AND/OR/NOT groups
 - **Static model filters** — model-level WHERE filters applied to every query; defined via `filters` array with `dataObject`, `column`, `operator`, `value`/`values`; duplicate query-time filters are auto-deduplicated; dates coerced to ISO 8601
 - **Ratio pattern** — derived metrics referencing filtered measures (e.g. `{[US Revenue]} / {[Revenue]}`)
+- **Extends** — merge analytical fragments (dimensions, measures, metrics) from separate YAML strings into a model via `load_model(extends=[...])`
+- **Inherits** — inherit data objects and joins from an already-loaded parent model via `load_model(inherits="parent_model_id")`
 
 All features are handled by the API — the MCP server passes through OBML YAML and query parameters unchanged.
 

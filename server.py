@@ -539,6 +539,16 @@ def _impl_describe_model(model_id: str | None = None) -> str:
 
     lines: list[str] = [f"Model {mid}:", ""]
 
+    # Composition
+    extends = desc.get("extends", [])
+    inherits = desc.get("inherits")
+    if extends:
+        lines.append(f"EXTENDS: {', '.join(extends)}")
+    if inherits:
+        lines.append(f"INHERITS: {inherits}")
+    if extends or inherits:
+        lines.append("")
+
     # Data objects
     lines.append("DATA OBJECTS:")
     for obj in desc.get("data_objects", []):
@@ -1193,7 +1203,11 @@ def _register_multi_model_tools() -> None:
     """Register tools for multi-model mode (requires model_id, session-scoped)."""
 
     @mcp.tool
-    def load_model(model_yaml: str | None = None) -> str:
+    def load_model(
+        model_yaml: str | None = None,
+        extends: list[str] | None = None,
+        inherits: str | None = None,
+    ) -> str:
         """Parse and store user-provided OBML YAML. Returns a model_id.
 
         ``model_yaml`` is mandatory. Do NOT call this tool unless the user or
@@ -1202,6 +1216,12 @@ def _register_multi_model_tools() -> None:
 
         Args:
             model_yaml: (mandatory) Complete OBML YAML string (starts with version: 1.0).
+            extends: Optional list of OBML YAML strings with analytical
+                fragments (dimensions, measures, metrics) to merge into the
+                model before loading.
+            inherits: Optional model_id of an already-loaded parent model in
+                the session.  The child model inherits the parent's data
+                objects and joins, adding or overriding analytical artefacts.
         """
         if not model_yaml:
             raise ToolError(
@@ -1209,7 +1229,12 @@ def _register_multi_model_tools() -> None:
                 "Call get_obml_reference() first to learn the correct format."
             )
         logger.info("load_model called (yaml length=%d)", len(model_yaml))
-        resp = _session_request("POST", "/models", json_body={"model_yaml": model_yaml})
+        body: dict = {"model_yaml": model_yaml}
+        if extends:
+            body["extends"] = extends
+        if inherits:
+            body["inherits"] = inherits
+        resp = _session_request("POST", "/models", json_body=body)
         data = _parse_json(resp)
 
         parts = [
@@ -1761,6 +1786,11 @@ references unknown column.
 
 - `AMBIGUOUS_JOIN`: Multiple join paths found during query resolution.
   Fix: Make join graph unambiguous or use `usePathNames`.
+- `MALFORMED_EXPRESSION_REF`: Expression contains a malformed `{[...]}` reference
+  (missing brackets, separators, or braces).
+  Fix: Measure expressions use `{[DataObject].[Column]}` syntax;
+  metric expressions use `{[Measure Name]}` syntax.  Check for missing
+  `[`, `]`, `{`, `}`, or `.` separators.
 - `INVALID_METRIC_EXPRESSION`: Metric expression could not be parsed.
   Fix: Use `{[Measure Name]}` syntax in metric expressions.
 - `INVALID_FILTER_OPERATOR`: Unrecognised filter operator in query.
