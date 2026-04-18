@@ -1271,8 +1271,8 @@ def _register_multi_model_tools() -> None:
 
     @mcp.tool
     def load_model(
-        model: dict | None = None,
-        extends: list[dict] | None = None,
+        model: dict | str | None = None,
+        extends: list[dict] | str | None = None,
         inherits: str | None = None,
     ) -> str:
         """Load a semantic model definition. Returns a model_id.
@@ -1325,9 +1325,19 @@ def _register_multi_model_tools() -> None:
                 "model is mandatory — provide the OBML model as a JSON object. "
                 "Call get_obml_reference() first to learn the structure."
             )
+        if isinstance(model, str):
+            try:
+                model = json.loads(model)
+            except json.JSONDecodeError as exc:
+                raise ToolError(f"Invalid model JSON string: {exc}") from exc
         logger.info("load_model called")
         body: dict = {"model_json": model}
         if extends:
+            if isinstance(extends, str):
+                try:
+                    extends = json.loads(extends)
+                except json.JSONDecodeError as exc:
+                    raise ToolError(f"Invalid extends JSON string: {exc}") from exc
             body["extends_json"] = extends
         if inherits:
             body["inherits"] = inherits
