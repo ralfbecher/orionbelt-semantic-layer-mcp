@@ -360,7 +360,8 @@ def get_obml_reference() -> str:
 
     IMPORTANT: Call this tool BEFORE composing any OBML YAML to understand
     the correct syntax.  Returns the full specification with examples for
-    dataObjects, dimensions, measures, metrics, joins, and expressions.
+    dataObjects (including joins defined inside each dataObject),
+    dimensions, measures, metrics, and expressions.
     """
     return _fetch_obml_reference()
 
@@ -1139,9 +1140,12 @@ def _register_single_model_tools() -> None:
             dialect: Target SQL dialect.
             dimensions: List of dimension names.
             measures: List of measure names.
-            where: Filters as JSON array of filter objects.
-            having: Measure/metric filters as JSON array of filter objects.
-            order_by: Ordering as JSON array of {field, direction} objects.
+            where: Filters as a JSON string, e.g.
+                '[{"field": "Country", "op": "equals", "value": "US"}]'.
+            having: Measure/metric filters as a JSON string, e.g.
+                '[{"field": "Revenue", "op": "gt", "value": 1000}]'.
+            order_by: Ordering as a JSON string, e.g.
+                '[{"field": "Revenue", "direction": "desc"}]'.
             limit: Maximum number of rows to return.
             offset: Number of rows to skip.
             dimensions_exclude: If true, return dimension combinations that
@@ -1482,9 +1486,12 @@ def _register_multi_model_tools() -> None:
             dialect: Target SQL dialect.
             dimensions: List of dimension names.
             measures: List of measure names.
-            where: Filters as JSON array of filter objects.
-            having: Measure/metric filters as JSON array of filter objects.
-            order_by: Ordering as JSON array of {field, direction} objects.
+            where: Filters as a JSON string, e.g.
+                '[{"field": "Country", "op": "equals", "value": "US"}]'.
+            having: Measure/metric filters as a JSON string, e.g.
+                '[{"field": "Revenue", "op": "gt", "value": 1000}]'.
+            order_by: Ordering as a JSON string, e.g.
+                '[{"field": "Revenue", "direction": "desc"}]'.
             limit: Maximum number of rows to return.
             offset: Number of rows to skip.
             dimensions_exclude: If true, return dimension combinations that
@@ -1731,9 +1738,12 @@ def _register_execute_query_tool() -> None:
                 dialect: Target SQL dialect.
                 dimensions: List of dimension names.
                 measures: List of measure names.
-                where: Filters as JSON array of filter objects.
-                having: Measure/metric filters as JSON array of filter objects.
-                order_by: Ordering as JSON array of {field, direction} objects.
+                where: Filters as a JSON string, e.g.
+                    '[{"field": "Country", "op": "equals", "value": "US"}]'.
+                having: Measure/metric filters as a JSON string, e.g.
+                    '[{"field": "Revenue", "op": "gt", "value": 1000}]'.
+                order_by: Ordering as a JSON string, e.g.
+                    '[{"field": "Revenue", "direction": "desc"}]'.
                 limit: Maximum number of rows to return.
                 offset: Number of rows to skip.
                 dimensions_exclude: If true, return dimension combinations that
@@ -1784,9 +1794,12 @@ def _register_execute_query_tool() -> None:
                 dialect: Target SQL dialect.
                 dimensions: List of dimension names.
                 measures: List of measure names.
-                where: Filters as JSON array of filter objects.
-                having: Measure/metric filters as JSON array of filter objects.
-                order_by: Ordering as JSON array of {field, direction} objects.
+                where: Filters as a JSON string, e.g.
+                    '[{"field": "Country", "op": "equals", "value": "US"}]'.
+                having: Measure/metric filters as a JSON string, e.g.
+                    '[{"field": "Revenue", "op": "gt", "value": 1000}]'.
+                order_by: Ordering as a JSON string, e.g.
+                    '[{"field": "Revenue", "direction": "desc"}]'.
                 limit: Maximum number of rows to return.
                 offset: Number of rows to skip.
                 dimensions_exclude: If true, return dimension combinations that

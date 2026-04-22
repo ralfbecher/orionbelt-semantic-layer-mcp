@@ -124,8 +124,7 @@ Environment variables or `.env` file (pydantic-settings). See `.env.example` for
 | MCP Tool                          | Description                                              |
 | --------------------------------- | -------------------------------------------------------- |
 | `get_obml_reference()`            | Returns the full OBML format specification               |
-| `load_model(model_yaml)`          | Parse, validate, and store a semantic model              |
-| `validate_model(model_yaml)`      | Validate a model without storing it                      |
+| `load_model(model)`               | Parse, validate, and store a semantic model (JSON object)|
 | `describe_model(model_id)`        | Inspect data objects, dimensions, measures, metrics      |
 | `remove_model(model_id)`          | Remove a model from the current session                  |
 | `list_models()`                   | List all models loaded in the current session            |
