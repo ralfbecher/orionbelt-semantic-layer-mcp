@@ -1343,12 +1343,21 @@ def _register_multi_model_tools() -> None:
                 "dataObjects": {
                     "Sales": {
                         "code": "sales", "schema": "public",
-                        "columns": {"Amount": {"abstractType": "float"}}
+                        "columns": {"Amount": {"abstractType": "float"},
+                                    "CustomerKey": {"abstractType": "int"}},
+                        "joins": [{"joinTo": "Customers", "joinType": "inner",
+                                   "columnsFrom": ["CustomerKey"],
+                                   "columnsTo": ["CustomerKey"]}]
+                    },
+                    "Customers": {
+                        "code": "customers", "schema": "public",
+                        "columns": {"CustomerKey": {"abstractType": "int"},
+                                    "Country": {"abstractType": "string"}}
                     }
                 },
                 "dimensions": {
                     "Country": {
-                        "dataObject": "Sales", "column": "Country",
+                        "dataObject": "Customers", "column": "Country",
                         "resultType": "string"
                     }
                 },
@@ -1360,8 +1369,15 @@ def _register_multi_model_tools() -> None:
                 }
             })
 
+        IMPORTANT: Joins are defined INSIDE each dataObject (not at the top
+        level).  Each join uses ``joinTo`` (target data object name),
+        ``joinType`` (inner/left/right/full), ``columnsFrom`` (columns in
+        this data object), and ``columnsTo`` (columns in the target).
+        Column names in joins reference OBML column names (the keys in
+        ``columns``), not physical database column names.
+
         Keys use camelCase: ``dataObjects``, ``joinType``, ``columnsFrom``,
-        ``resultType``, ``abstractType``, ``timeGrain``.
+        ``columnsTo``, ``resultType``, ``abstractType``, ``timeGrain``.
 
         Column ``abstractType`` values: string, int, float, date, boolean.
         Aggregation values: SUM, COUNT, AVG, MIN, MAX, count_distinct, any_value.
@@ -1372,7 +1388,8 @@ def _register_multi_model_tools() -> None:
 
         Args:
             model: (mandatory) OBML model as a JSON object (top-level keys:
-                version, dataObjects, dimensions, measures, metrics, joins).
+                version, dataObjects, dimensions, measures, metrics).
+                Joins are defined inside each dataObject, not at the top level.
             extends: Optional list of analytical fragment objects (dimensions,
                 measures, metrics) to merge into the model before loading.
             inherits: Optional model_id of an already-loaded parent model in
