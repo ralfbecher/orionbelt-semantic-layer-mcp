@@ -585,6 +585,26 @@ def _impl_describe_model(model_id: str | None = None) -> str:
         lines.append(f"  {m_name}  ({m_type}, {m_agg}{expr}{dtype})")
         if m.get("description"):
             lines.append(f"    description: {m['description']}")
+        if m.get("grain"):
+            g = m["grain"]
+            g_parts = [f"mode: {g.get('mode', 'RELATIVE')}"]
+            if g.get("exclude"):
+                g_parts.append(f"exclude: {g['exclude']}")
+            if g.get("include"):
+                g_parts.append(f"include: {g['include']}")
+            if g.get("keepOnly") or g.get("keep_only"):
+                g_parts.append(f"keepOnly: {g.get('keepOnly') or g.get('keep_only')}")
+            lines.append(f"    grain: {', '.join(g_parts)}")
+        if m.get("filter_context") or m.get("filterContext"):
+            fc = m.get("filter_context") or m.get("filterContext")
+            fc_parts = [f"mode: {fc.get('mode', 'RELATIVE')}"]
+            if fc.get("exclude"):
+                fc_parts.append(f"exclude: {fc['exclude']}")
+            if fc.get("include"):
+                fc_parts.append(f"include: {len(fc['include'])} filter(s)")
+            if fc.get("keepOnly") or fc.get("keep_only"):
+                fc_parts.append(f"keepOnly: {fc.get('keepOnly') or fc.get('keep_only')}")
+            lines.append(f"    filterContext: {', '.join(fc_parts)}")
         if m.get("synonyms"):
             lines.append(f"    synonyms: {', '.join(m['synonyms'])}")
     lines.append("")
@@ -731,6 +751,10 @@ def _format_compile_result(data: dict) -> str:
                     parts.append(f"--     Join: {jn}")
         if exp.get("has_totals"):
             parts.append("-- Totals: yes")
+        if exp.get("has_grain_overrides"):
+            parts.append("-- Grain overrides: yes")
+        if exp.get("has_filter_context"):
+            parts.append("-- Filter context: yes")
     if data.get("warnings"):
         parts.append("")
         parts.append(f"-- Warnings: {'; '.join(data['warnings'])}")
@@ -896,7 +920,10 @@ def _impl_list_measures(model_id: str | None) -> str:
         m_type = m.get("result_type", "?")
         m_agg = m.get("aggregation", "?")
         dtype = f"  dataType: {m['data_type']}" if m.get("data_type") else ""
-        lines.append(f"  {m_name}  ({m_type}, {m_agg}{expr}{dtype})")
+        total = "  total" if m.get("total") else ""
+        grain_tag = "  grain" if m.get("grain") else ""
+        fc_tag = "  filterContext" if m.get("filter_context") or m.get("filterContext") else ""
+        lines.append(f"  {m_name}  ({m_type}, {m_agg}{expr}{dtype}{total}{grain_tag}{fc_tag})")
         if m.get("description"):
             lines.append(f"    description: {m['description']}")
         if m.get("synonyms"):
@@ -1891,6 +1918,27 @@ aggregation (compiled as `CASE WHEN`).  A filtered measure like
 "US Revenue" can then be used in a **ratio metric**:
 `{{[US Revenue]}} / {{[Revenue]}}`  — no query-level WHERE needed.
 
+## Grain Override & Filter Context
+
+Measures can override their aggregation grain and filter context in the
+OBML model definition (not at query time):
+
+- **Grain override** (`grain:`) — controls which dimensions a measure
+  aggregates over, independently from the query's dimensions.  Enables
+  percent-of-total, percent-of-parent, and cross-grain calculations.
+  Modes: `FIXED` (start empty) or `RELATIVE` (inherit query dims).
+  Operators: `exclude`, `include`, `keepOnly`.
+  `total: true` is shorthand for `grain: {{mode: FIXED}}`.
+
+- **Filter context** (`filterContext:`) — controls which query WHERE
+  filters apply to a measure.  Enables unfiltered baselines and
+  selective filter exclusion.  Modes: `FIXED` (ignore all query
+  filters) or `RELATIVE` (inherit and modify).
+  Operators: `exclude`, `include` (static filters), `keepOnly`.
+
+Both are defined in the OBML YAML and passed through to the API.
+Call `get_obml_reference()` for full syntax and examples.
+
 ## Tips
 
 - Use `describe_model` first to see available dimension/measure names.
@@ -1968,6 +2016,16 @@ references unknown column.
   Fix: Add a `pathName` to the secondary join.
 - `DUPLICATE_JOIN_PATH_NAME`: Duplicate `pathName` for the same (source, target) pair.
   Fix: Use a unique `pathName` per (source, target) pair.
+
+## Grain & Filter Context Errors
+
+- `UNKNOWN_GRAIN_DIMENSION`: Grain override references a non-existent dimension.
+  Fix: Check dimension name in grain.include, grain.exclude, or grain.keepOnly.
+- `UNKNOWN_FILTER_CONTEXT_FIELD`: Filter context references a non-existent field.
+  Fix: Check field names in filterContext.exclude, filterContext.keepOnly, or
+  filterContext.include[].field — must be a dimension name or DataObject.Column.
+- `GRAIN_NOT_SUBSET`: Effective grain dimensions are not a subset of query dimensions.
+  Fix: Ensure all grain dimensions are included in the query's dimension list.
 
 ## Resolution Errors (at query time)
 
