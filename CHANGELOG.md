@@ -4,6 +4,29 @@ All notable changes to OrionBelt Semantic Layer MCP are documented in this file.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.8.0] — 2026-04-22
+
+### Added
+- **Grain override support** — `describe_model` and `list_measures` now
+  surface per-measure `grain` overrides (mode, exclude, include, keepOnly)
+  when returned by the API
+- **Filter context support** — `describe_model` and `list_measures` now
+  surface per-measure `filterContext` overrides (mode, exclude, include,
+  keepOnly) when returned by the API
+- **Explain plan** — `compile_query` output now shows `has_grain_overrides`
+  and `has_filter_context` flags from the query explain plan
+- **Validation error codes** — `debug_validation` prompt updated with
+  `UNKNOWN_GRAIN_DIMENSION`, `UNKNOWN_FILTER_CONTEXT_FIELD`, and
+  `GRAIN_NOT_SUBSET` error codes
+- **Query prompt** — `write_query` prompt updated with grain override and
+  filter context documentation section
+
+### Changed
+- Version bumped to 1.8.0 (aligned with OrionBelt Semantic Layer API 1.8.0)
+- OrionBelt Semantic Layer badge updated to 1.8
+
+---
+
 ## [1.3.0] — 2026-04-10
 
 ### Added

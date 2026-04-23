@@ -360,7 +360,8 @@ def get_obml_reference() -> str:
 
     IMPORTANT: Call this tool BEFORE composing any OBML YAML to understand
     the correct syntax.  Returns the full specification with examples for
-    dataObjects, dimensions, measures, metrics, joins, and expressions.
+    dataObjects (including joins defined inside each dataObject),
+    dimensions, measures, metrics, and expressions.
     """
     return _fetch_obml_reference()
 
@@ -585,6 +586,26 @@ def _impl_describe_model(model_id: str | None = None) -> str:
         lines.append(f"  {m_name}  ({m_type}, {m_agg}{expr}{dtype})")
         if m.get("description"):
             lines.append(f"    description: {m['description']}")
+        if m.get("grain"):
+            g = m["grain"]
+            g_parts = [f"mode: {g.get('mode', 'RELATIVE')}"]
+            if g.get("exclude"):
+                g_parts.append(f"exclude: {g['exclude']}")
+            if g.get("include"):
+                g_parts.append(f"include: {g['include']}")
+            if g.get("keepOnly") or g.get("keep_only"):
+                g_parts.append(f"keepOnly: {g.get('keepOnly') or g.get('keep_only')}")
+            lines.append(f"    grain: {', '.join(g_parts)}")
+        if m.get("filter_context") or m.get("filterContext"):
+            fc = m.get("filter_context") or m.get("filterContext")
+            fc_parts = [f"mode: {fc.get('mode', 'RELATIVE')}"]
+            if fc.get("exclude"):
+                fc_parts.append(f"exclude: {fc['exclude']}")
+            if fc.get("include"):
+                fc_parts.append(f"include: {len(fc['include'])} filter(s)")
+            if fc.get("keepOnly") or fc.get("keep_only"):
+                fc_parts.append(f"keepOnly: {fc.get('keepOnly') or fc.get('keep_only')}")
+            lines.append(f"    filterContext: {', '.join(fc_parts)}")
         if m.get("synonyms"):
             lines.append(f"    synonyms: {', '.join(m['synonyms'])}")
     lines.append("")
@@ -731,6 +752,10 @@ def _format_compile_result(data: dict) -> str:
                     parts.append(f"--     Join: {jn}")
         if exp.get("has_totals"):
             parts.append("-- Totals: yes")
+        if exp.get("has_grain_overrides"):
+            parts.append("-- Grain overrides: yes")
+        if exp.get("has_filter_context"):
+            parts.append("-- Filter context: yes")
     if data.get("warnings"):
         parts.append("")
         parts.append(f"-- Warnings: {'; '.join(data['warnings'])}")
@@ -896,7 +921,10 @@ def _impl_list_measures(model_id: str | None) -> str:
         m_type = m.get("result_type", "?")
         m_agg = m.get("aggregation", "?")
         dtype = f"  dataType: {m['data_type']}" if m.get("data_type") else ""
-        lines.append(f"  {m_name}  ({m_type}, {m_agg}{expr}{dtype})")
+        total = "  total" if m.get("total") else ""
+        grain_tag = "  grain" if m.get("grain") else ""
+        fc_tag = "  filterContext" if m.get("filter_context") or m.get("filterContext") else ""
+        lines.append(f"  {m_name}  ({m_type}, {m_agg}{expr}{dtype}{total}{grain_tag}{fc_tag})")
         if m.get("description"):
             lines.append(f"    description: {m['description']}")
         if m.get("synonyms"):
@@ -1112,9 +1140,12 @@ def _register_single_model_tools() -> None:
             dialect: Target SQL dialect.
             dimensions: List of dimension names.
             measures: List of measure names.
-            where: Filters as JSON array of filter objects.
-            having: Measure/metric filters as JSON array of filter objects.
-            order_by: Ordering as JSON array of {field, direction} objects.
+            where: Filters as a JSON string, e.g.
+                '[{"field": "Country", "op": "equals", "value": "US"}]'.
+            having: Measure/metric filters as a JSON string, e.g.
+                '[{"field": "Revenue", "op": "gt", "value": 1000}]'.
+            order_by: Ordering as a JSON string, e.g.
+                '[{"field": "Revenue", "direction": "desc"}]'.
             limit: Maximum number of rows to return.
             offset: Number of rows to skip.
             dimensions_exclude: If true, return dimension combinations that
@@ -1316,12 +1347,21 @@ def _register_multi_model_tools() -> None:
                 "dataObjects": {
                     "Sales": {
                         "code": "sales", "schema": "public",
-                        "columns": {"Amount": {"abstractType": "float"}}
+                        "columns": {"Amount": {"abstractType": "float"},
+                                    "CustomerKey": {"abstractType": "int"}},
+                        "joins": [{"joinTo": "Customers", "joinType": "inner",
+                                   "columnsFrom": ["CustomerKey"],
+                                   "columnsTo": ["CustomerKey"]}]
+                    },
+                    "Customers": {
+                        "code": "customers", "schema": "public",
+                        "columns": {"CustomerKey": {"abstractType": "int"},
+                                    "Country": {"abstractType": "string"}}
                     }
                 },
                 "dimensions": {
                     "Country": {
-                        "dataObject": "Sales", "column": "Country",
+                        "dataObject": "Customers", "column": "Country",
                         "resultType": "string"
                     }
                 },
@@ -1333,8 +1373,15 @@ def _register_multi_model_tools() -> None:
                 }
             })
 
+        IMPORTANT: Joins are defined INSIDE each dataObject (not at the top
+        level).  Each join uses ``joinTo`` (target data object name),
+        ``joinType`` (inner/left/right/full), ``columnsFrom`` (columns in
+        this data object), and ``columnsTo`` (columns in the target).
+        Column names in joins reference OBML column names (the keys in
+        ``columns``), not physical database column names.
+
         Keys use camelCase: ``dataObjects``, ``joinType``, ``columnsFrom``,
-        ``resultType``, ``abstractType``, ``timeGrain``.
+        ``columnsTo``, ``resultType``, ``abstractType``, ``timeGrain``.
 
         Column ``abstractType`` values: string, int, float, date, boolean.
         Aggregation values: SUM, COUNT, AVG, MIN, MAX, count_distinct, any_value.
@@ -1345,7 +1392,8 @@ def _register_multi_model_tools() -> None:
 
         Args:
             model: (mandatory) OBML model as a JSON object (top-level keys:
-                version, dataObjects, dimensions, measures, metrics, joins).
+                version, dataObjects, dimensions, measures, metrics).
+                Joins are defined inside each dataObject, not at the top level.
             extends: Optional list of analytical fragment objects (dimensions,
                 measures, metrics) to merge into the model before loading.
             inherits: Optional model_id of an already-loaded parent model in
@@ -1438,9 +1486,12 @@ def _register_multi_model_tools() -> None:
             dialect: Target SQL dialect.
             dimensions: List of dimension names.
             measures: List of measure names.
-            where: Filters as JSON array of filter objects.
-            having: Measure/metric filters as JSON array of filter objects.
-            order_by: Ordering as JSON array of {field, direction} objects.
+            where: Filters as a JSON string, e.g.
+                '[{"field": "Country", "op": "equals", "value": "US"}]'.
+            having: Measure/metric filters as a JSON string, e.g.
+                '[{"field": "Revenue", "op": "gt", "value": 1000}]'.
+            order_by: Ordering as a JSON string, e.g.
+                '[{"field": "Revenue", "direction": "desc"}]'.
             limit: Maximum number of rows to return.
             offset: Number of rows to skip.
             dimensions_exclude: If true, return dimension combinations that
@@ -1687,9 +1738,12 @@ def _register_execute_query_tool() -> None:
                 dialect: Target SQL dialect.
                 dimensions: List of dimension names.
                 measures: List of measure names.
-                where: Filters as JSON array of filter objects.
-                having: Measure/metric filters as JSON array of filter objects.
-                order_by: Ordering as JSON array of {field, direction} objects.
+                where: Filters as a JSON string, e.g.
+                    '[{"field": "Country", "op": "equals", "value": "US"}]'.
+                having: Measure/metric filters as a JSON string, e.g.
+                    '[{"field": "Revenue", "op": "gt", "value": 1000}]'.
+                order_by: Ordering as a JSON string, e.g.
+                    '[{"field": "Revenue", "direction": "desc"}]'.
                 limit: Maximum number of rows to return.
                 offset: Number of rows to skip.
                 dimensions_exclude: If true, return dimension combinations that
@@ -1740,9 +1794,12 @@ def _register_execute_query_tool() -> None:
                 dialect: Target SQL dialect.
                 dimensions: List of dimension names.
                 measures: List of measure names.
-                where: Filters as JSON array of filter objects.
-                having: Measure/metric filters as JSON array of filter objects.
-                order_by: Ordering as JSON array of {field, direction} objects.
+                where: Filters as a JSON string, e.g.
+                    '[{"field": "Country", "op": "equals", "value": "US"}]'.
+                having: Measure/metric filters as a JSON string, e.g.
+                    '[{"field": "Revenue", "op": "gt", "value": 1000}]'.
+                order_by: Ordering as a JSON string, e.g.
+                    '[{"field": "Revenue", "direction": "desc"}]'.
                 limit: Maximum number of rows to return.
                 offset: Number of rows to skip.
                 dimensions_exclude: If true, return dimension combinations that
@@ -1891,6 +1948,27 @@ aggregation (compiled as `CASE WHEN`).  A filtered measure like
 "US Revenue" can then be used in a **ratio metric**:
 `{{[US Revenue]}} / {{[Revenue]}}`  — no query-level WHERE needed.
 
+## Grain Override & Filter Context
+
+Measures can override their aggregation grain and filter context in the
+OBML model definition (not at query time):
+
+- **Grain override** (`grain:`) — controls which dimensions a measure
+  aggregates over, independently from the query's dimensions.  Enables
+  percent-of-total, percent-of-parent, and cross-grain calculations.
+  Modes: `FIXED` (start empty) or `RELATIVE` (inherit query dims).
+  Operators: `exclude`, `include`, `keepOnly`.
+  `total: true` is shorthand for `grain: {{mode: FIXED}}`.
+
+- **Filter context** (`filterContext:`) — controls which query WHERE
+  filters apply to a measure.  Enables unfiltered baselines and
+  selective filter exclusion.  Modes: `FIXED` (ignore all query
+  filters) or `RELATIVE` (inherit and modify).
+  Operators: `exclude`, `include` (static filters), `keepOnly`.
+
+Both are defined in the OBML YAML and passed through to the API.
+Call `get_obml_reference()` for full syntax and examples.
+
 ## Tips
 
 - Use `describe_model` first to see available dimension/measure names.
@@ -1968,6 +2046,16 @@ references unknown column.
   Fix: Add a `pathName` to the secondary join.
 - `DUPLICATE_JOIN_PATH_NAME`: Duplicate `pathName` for the same (source, target) pair.
   Fix: Use a unique `pathName` per (source, target) pair.
+
+## Grain & Filter Context Errors
+
+- `UNKNOWN_GRAIN_DIMENSION`: Grain override references a non-existent dimension.
+  Fix: Check dimension name in grain.include, grain.exclude, or grain.keepOnly.
+- `UNKNOWN_FILTER_CONTEXT_FIELD`: Filter context references a non-existent field.
+  Fix: Check field names in filterContext.exclude, filterContext.keepOnly, or
+  filterContext.include[].field — must be a dimension name or DataObject.Column.
+- `GRAIN_NOT_SUBSET`: Effective grain dimensions are not a subset of query dimensions.
+  Fix: Ensure all grain dimensions are included in the query's dimension list.
 
 ## Resolution Errors (at query time)
 

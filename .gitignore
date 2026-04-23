@@ -9,3 +9,4 @@ dist/
 build/
 review*
 .claude/settings.local.json
+CLAUDE.md

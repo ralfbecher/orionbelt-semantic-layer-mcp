@@ -7,8 +7,8 @@
 
 <p align="center"><strong>Thin MCP server that delegates to the OrionBelt Semantic Layer REST API</strong></p>
 
-[![Version 1.7.0](https://img.shields.io/badge/version-1.7.0-purple.svg)](https://github.com/ralfbecher/orionbelt-semantic-layer-mcp/releases)
-[![OrionBelt Semantic Layer 1.7](https://img.shields.io/badge/OrionBelt_Semantic_Layer-1.7-0054A6.svg)](https://github.com/ralfbecher/orionbelt-semantic-layer)
+[![Version 1.8.0](https://img.shields.io/badge/version-1.8.0-purple.svg)](https://github.com/ralfbecher/orionbelt-semantic-layer-mcp/releases)
+[![OrionBelt Semantic Layer 1.8](https://img.shields.io/badge/OrionBelt_Semantic_Layer-1.8-0054A6.svg)](https://github.com/ralfbecher/orionbelt-semantic-layer)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://github.com/ralfbecher/orionbelt-semantic-layer-mcp/blob/main/LICENSE)
 [![FastMCP](https://img.shields.io/badge/FastMCP-3.2+-8A2BE2)](https://gofastmcp.com)
@@ -124,8 +124,7 @@ Environment variables or `.env` file (pydantic-settings). See `.env.example` for
 | MCP Tool                          | Description                                              |
 | --------------------------------- | -------------------------------------------------------- |
 | `get_obml_reference()`            | Returns the full OBML format specification               |
-| `load_model(model_yaml)`          | Parse, validate, and store a semantic model              |
-| `validate_model(model_yaml)`      | Validate a model without storing it                      |
+| `load_model(model)`               | Parse, validate, and store a semantic model (JSON object)|
 | `describe_model(model_id)`        | Inspect data objects, dimensions, measures, metrics      |
 | `remove_model(model_id)`          | Remove a model from the current session                  |
 | `list_models()`                   | List all models loaded in the current session            |
