@@ -4,6 +4,16 @@ All notable changes to OrionBelt Semantic Layer MCP are documented in this file.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.0.1] — 2026-04-27
+
+### Added
+- **API version check** — startup compares MCP server version against API
+  `/health` version and logs a warning on major or minor mismatch
+- **`get_settings` version info** — now shows API version and API prefix
+  from the `/v1/settings` response
+
+---
+
 ## [2.0.0] — 2026-04-27
 
 ### Added
