@@ -4,20 +4,27 @@ All notable changes to OrionBelt Semantic Layer MCP are documented in this file.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
-## [1.9.0] — 2026-04-26
+## [2.0.0] — 2026-04-27
 
 ### Added
 - **Role-playing dimensions (`via`)** — `describe_model` and `list_dimensions`
   now surface the optional `via` property on dimensions, showing which
   intermediate data object forces the join path
+- **Coalesce dimensions** — `compile_query` and `execute_query` support a new
+  `coalesce_dimensions` parameter to merge role-playing dimensions into a
+  single output column via COALESCE (e.g.
+  `[{"coalesce": ["SalesEmp", "PurchaseEmp"], "as": "Employee"}]`)
 - **Validation error codes** — `debug_validation` prompt updated with
-  `INVALID_VIA_DATA_OBJECT` and `MISSING_VIA` error/warning codes
+  `INVALID_VIA_DATA_OBJECT`, `MISSING_VIA`, `UNREACHABLE_REQUIRED_OBJECT`,
+  `COALESCE_MISSING_ALIAS`, `DUPLICATE_COALESCE_ALIAS`,
+  `COALESCE_ALIAS_COLLISION`, `COALESCE_TOO_FEW_MEMBERS`, and
+  `COALESCE_TYPE_MISMATCH` error/warning codes
 - **Query prompt** — `write_query` prompt updated with role-playing dimensions
-  documentation section explaining `via` usage and querying
+  and coalesce dimensions documentation sections
 
 ### Changed
-- Version bumped to 1.9.0 (aligned with OrionBelt Semantic Layer API 1.9.0)
-- OrionBelt Semantic Layer badge updated to 1.9
+- Version bumped to 2.0.0 (aligned with OrionBelt Semantic Layer API 2.0.0)
+- OrionBelt Semantic Layer badge updated to 2.0
 
 ---
 

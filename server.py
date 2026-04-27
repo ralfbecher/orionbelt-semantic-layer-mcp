@@ -680,6 +680,7 @@ def _build_query_object(
     limit: int | None = None,
     offset: int | None = None,
     dimensions_exclude: bool | None = None,
+    coalesce_dimensions: str | None = None,
 ) -> dict:
     """Build a query dict from tool arguments (shared by compile/execute)."""
     if query_json is not None:
@@ -688,9 +689,15 @@ def _build_query_object(
         except json.JSONDecodeError as exc:
             raise ToolError(f"Invalid query JSON: {exc}") from exc
     elif dimensions is not None or measures is not None:
+        dim_list: list[str | dict] = list(dimensions or [])
+        parsed_coalesce = _parse_json_param(coalesce_dimensions, "coalesce_dimensions")
+        if parsed_coalesce is not None:
+            if not isinstance(parsed_coalesce, list):
+                raise ToolError("coalesce_dimensions must be a JSON array")
+            dim_list.extend(parsed_coalesce)
         query: dict = {
             "select": {
-                "dimensions": dimensions or [],
+                "dimensions": dim_list,
                 "measures": measures or [],
             },
         }
@@ -776,6 +783,7 @@ def _impl_compile_query(
     limit: int | None = None,
     offset: int | None = None,
     dimensions_exclude: bool | None = None,
+    coalesce_dimensions: str | None = None,
 ) -> str:
     """Compile a semantic query (shared implementation)."""
     logger.info("compile_query called (model_id=%s, dialect=%s)", model_id, dialect)
@@ -790,6 +798,7 @@ def _impl_compile_query(
         limit=limit,
         offset=offset,
         dimensions_exclude=dimensions_exclude,
+        coalesce_dimensions=coalesce_dimensions,
     )
 
     if model_id is None:
@@ -818,6 +827,7 @@ def _impl_execute_query(
     limit: int | None = None,
     offset: int | None = None,
     dimensions_exclude: bool | None = None,
+    coalesce_dimensions: str | None = None,
 ) -> str:
     """Compile and execute a semantic query (shared implementation)."""
     logger.info("execute_query called (model_id=%s, dialect=%s)", model_id, dialect)
@@ -832,6 +842,7 @@ def _impl_execute_query(
         limit=limit,
         offset=offset,
         dimensions_exclude=dimensions_exclude,
+        coalesce_dimensions=coalesce_dimensions,
     )
 
     if model_id is None:
@@ -1117,6 +1128,7 @@ def _register_single_model_tools() -> None:
         limit: int | None = None,
         offset: int | None = None,
         dimensions_exclude: bool | None = None,
+        coalesce_dimensions: str | None = None,
         query_json: str | None = None,
         use_path_names: list[dict[str, str]] | None = None,
     ) -> str:
@@ -1131,6 +1143,17 @@ def _register_single_model_tools() -> None:
                 where='[{"field": "Country", "op": "equals", "value": "US"}]',
                 order_by='[{"field": "Revenue", "direction": "desc"}]',
                 limit=10,
+            )
+
+        To merge role-playing dimensions into a single column, use
+        ``coalesce_dimensions``::
+
+            compile_query(
+                measures=["Total Sales", "Total Purchases"],
+                coalesce_dimensions=(
+                    '[{"coalesce": ["SalesEmp", "PurchaseEmp"],'
+                    ' "as": "Employee"}]'
+                ),
             )
 
         Alternatively, pass a complete query as JSON via ``query_json``
@@ -1152,6 +1175,11 @@ def _register_single_model_tools() -> None:
             offset: Number of rows to skip.
             dimensions_exclude: If true, return dimension combinations that
                 do NOT exist (anti-join).
+            coalesce_dimensions: Coalesce groups as a JSON string, e.g.
+                '[{"coalesce": ["SalesEmp", "PurchaseEmp"],
+                "as": "Employee"}]'.  Merges role-playing dimensions
+                into one output column via COALESCE.  All members must
+                share the same resultType.
             query_json: Complete query as JSON string (overrides above).
             use_path_names: List of {source, target, pathName} dicts for
                 selecting secondary joins.
@@ -1169,6 +1197,7 @@ def _register_single_model_tools() -> None:
             limit=limit,
             offset=offset,
             dimensions_exclude=dimensions_exclude,
+            coalesce_dimensions=coalesce_dimensions,
         )
 
     @mcp.tool
@@ -1461,6 +1490,7 @@ def _register_multi_model_tools() -> None:
         limit: int | None = None,
         offset: int | None = None,
         dimensions_exclude: bool | None = None,
+        coalesce_dimensions: str | None = None,
         query_json: str | None = None,
         use_path_names: list[dict[str, str]] | None = None,
     ) -> str:
@@ -1476,6 +1506,18 @@ def _register_multi_model_tools() -> None:
                 where='[{"field": "Country", "op": "equals", "value": "US"}]',
                 order_by='[{"field": "Revenue", "direction": "desc"}]',
                 limit=10,
+            )
+
+        To merge role-playing dimensions into a single column, use
+        ``coalesce_dimensions``::
+
+            compile_query(
+                model_id="abc12345",
+                measures=["Total Sales", "Total Purchases"],
+                coalesce_dimensions=(
+                    '[{"coalesce": ["SalesEmp", "PurchaseEmp"],'
+                    ' "as": "Employee"}]'
+                ),
             )
 
         Alternatively, pass a complete query as JSON via ``query_json``
@@ -1498,6 +1540,11 @@ def _register_multi_model_tools() -> None:
             offset: Number of rows to skip.
             dimensions_exclude: If true, return dimension combinations that
                 do NOT exist (anti-join).
+            coalesce_dimensions: Coalesce groups as a JSON string, e.g.
+                '[{"coalesce": ["SalesEmp", "PurchaseEmp"],
+                "as": "Employee"}]'.  Merges role-playing dimensions
+                into one output column via COALESCE.  All members must
+                share the same resultType.
             query_json: Complete query as JSON string (overrides above).
             use_path_names: List of {source, target, pathName} dicts for
                 selecting secondary joins.
@@ -1515,6 +1562,7 @@ def _register_multi_model_tools() -> None:
             limit=limit,
             offset=offset,
             dimensions_exclude=dimensions_exclude,
+            coalesce_dimensions=coalesce_dimensions,
         )
 
     @mcp.tool
@@ -1728,6 +1776,7 @@ def _register_execute_query_tool() -> None:
             limit: int | None = None,
             offset: int | None = None,
             dimensions_exclude: bool | None = None,
+            coalesce_dimensions: str | None = None,
             query_json: str | None = None,
             use_path_names: list[dict[str, str]] | None = None,
         ) -> str:
@@ -1750,6 +1799,10 @@ def _register_execute_query_tool() -> None:
                 offset: Number of rows to skip.
                 dimensions_exclude: If true, return dimension combinations that
                     do NOT exist (anti-join).
+                coalesce_dimensions: Coalesce groups as a JSON string, e.g.
+                    '[{"coalesce": ["SalesEmp", "PurchaseEmp"], "as": "Employee"}]'.
+                    Merges role-playing dimensions into one output column via
+                    COALESCE.  All members must share the same resultType.
                 query_json: Complete query as JSON string (overrides above).
                 use_path_names: List of {source, target, pathName} dicts for
                     selecting secondary joins.
@@ -1767,6 +1820,7 @@ def _register_execute_query_tool() -> None:
                 limit=limit,
                 offset=offset,
                 dimensions_exclude=dimensions_exclude,
+                coalesce_dimensions=coalesce_dimensions,
             )
 
     else:
@@ -1783,6 +1837,7 @@ def _register_execute_query_tool() -> None:
             limit: int | None = None,
             offset: int | None = None,
             dimensions_exclude: bool | None = None,
+            coalesce_dimensions: str | None = None,
             query_json: str | None = None,
             use_path_names: list[dict[str, str]] | None = None,
         ) -> str:
@@ -1806,6 +1861,10 @@ def _register_execute_query_tool() -> None:
                 offset: Number of rows to skip.
                 dimensions_exclude: If true, return dimension combinations that
                     do NOT exist (anti-join).
+                coalesce_dimensions: Coalesce groups as a JSON string, e.g.
+                    '[{"coalesce": ["SalesEmp", "PurchaseEmp"], "as": "Employee"}]'.
+                    Merges role-playing dimensions into one output column via
+                    COALESCE.  All members must share the same resultType.
                 query_json: Complete query as JSON string (overrides above).
                 use_path_names: List of {source, target, pathName} dicts for
                     selecting secondary joins.
@@ -1823,6 +1882,7 @@ def _register_execute_query_tool() -> None:
                 limit=limit,
                 offset=offset,
                 dimensions_exclude=dimensions_exclude,
+                coalesce_dimensions=coalesce_dimensions,
             )
 
 
@@ -2000,6 +2060,39 @@ When querying, simply use the role-playing dimension name:
 compile_query(dimensions=["SalesEmployee"], measures=["Revenue"])
 ```
 
+## Coalesce Dimensions
+
+Role-playing dimensions appear as separate columns in CFL output — one row per
+role per person.  To collapse them into a single output column, use
+``coalesce_dimensions``::
+
+    compile_query(
+        measures=["Total Sales", "Total Purchases"],
+        coalesce_dimensions=(
+            '[{{"coalesce": ["SalesEmp", "PurchaseEmp"],'
+            ' "as": "Employee"}}]'
+        ),
+    )
+
+Or in ``query_json``::
+
+    {{"select": {{
+        "dimensions": [
+            {{"coalesce": ["SalesEmployee", "PurchaseEmployee"], "as": "Employee"}}
+        ],
+        "measures": ["Total Sales", "Total Purchases"]
+    }}}}
+
+Each CFL leg projects only its own role-playing dimension (others NULL); the
+outer wrapper emits ``COALESCE(d1, d2, ...) AS alias`` and groups by it.
+
+Rules:
+- At least 2 members; all must be existing model dimensions
+- All members must share the same ``resultType``
+- The ``as`` alias must not collide with any model dimension or measure name
+- ``order_by`` may reference the alias directly
+- ``where`` filters use the underlying dimension names (per-leg filtering)
+
 ## Tips
 
 - Use `describe_model` first to see available dimension/measure names.
@@ -2089,6 +2182,20 @@ references unknown column.
   Fix: Add role-playing dimensions with `via` to disambiguate, or ignore if ambiguity is
   intentional.
 
+## Coalesce Dimension Errors
+
+- `COALESCE_MISSING_ALIAS`: Coalesce dimension requires a non-empty `as` alias.
+  Fix: Add `"as": "AliasName"` to the coalesce group.
+- `DUPLICATE_COALESCE_ALIAS`: Duplicate coalesce alias in the same query.
+  Fix: Use a unique `as` alias for each coalesce group.
+- `COALESCE_ALIAS_COLLISION`: Coalesce alias collides with an existing model dimension
+  or measure name.
+  Fix: Choose an alias that doesn't match any dimension or measure name.
+- `COALESCE_TOO_FEW_MEMBERS`: Coalesce requires at least 2 dimensions.
+  Fix: Add at least 2 dimension names to the `coalesce` array.
+- `COALESCE_TYPE_MISMATCH`: Coalesce members have incompatible result types.
+  Fix: All members must share the same `resultType`.
+
 ## Grain & Filter Context Errors
 
 - `UNKNOWN_GRAIN_DIMENSION`: Grain override references a non-existent dimension.
@@ -2103,6 +2210,11 @@ references unknown column.
 
 - `AMBIGUOUS_JOIN`: Multiple join paths found during query resolution.
   Fix: Make join graph unambiguous or use `usePathNames`.
+- `UNREACHABLE_REQUIRED_OBJECT`: A data object required by the query cannot be reached
+  from the base object via directed joins. Many-to-one joins are forward-only; reverse
+  traversal would inflate row counts.
+  Fix: Add an explicit join from the base object (or an intermediate object) to the
+  unreachable object, or split the query.
 - `MALFORMED_EXPRESSION_REF`: Expression contains a malformed `{[...]}` reference
   (missing brackets, separators, or braces).
   Fix: Measure expressions use `{[DataObject].[Column]}` syntax;
