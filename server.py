@@ -27,13 +27,14 @@ import json
 import logging
 import threading
 from contextlib import asynccontextmanager
-from typing import Literal, NoReturn
+from typing import Any, Literal, NoReturn
 from urllib.parse import quote
 
 import httpx
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from fastmcp.prompts.prompt import Prompt as _BasePrompt
+from fastmcp.server.middleware import CallNext, Middleware, MiddlewareContext
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # ---------------------------------------------------------------------------
@@ -56,14 +57,68 @@ class Settings(BaseSettings):
     mcp_transport: Literal["stdio", "http", "sse"] = "stdio"
     mcp_server_host: str = "localhost"
     mcp_server_port: int = 9000
+    # Cloud Run injects PORT; takes precedence over MCP_SERVER_PORT.
+    port: int | None = None
     log_level: str = "INFO"
+    # "console" (pretty), "json" (structured), or "cloudrun" (JSON, GCP severity).
+    log_format: Literal["console", "json", "cloudrun"] = "console"
     api_timeout: int = 30
+
+    @property
+    def effective_port(self) -> int:
+        return self.port if self.port is not None else self.mcp_server_port
 
 
 settings = Settings()
 
 # All API routes (except /health) are under the /v1 prefix since API v1.0.0
 _API_V1 = "/v1"
+
+
+# ---------------------------------------------------------------------------
+# Logging
+# ---------------------------------------------------------------------------
+
+
+class _CloudRunJSONFormatter(logging.Formatter):
+    """JSON log formatter compatible with GCP Cloud Logging severity mapping."""
+
+    _SEVERITY = {
+        "DEBUG": "DEBUG",
+        "INFO": "INFO",
+        "WARNING": "WARNING",
+        "ERROR": "ERROR",
+        "CRITICAL": "CRITICAL",
+    }
+
+    def format(self, record: logging.LogRecord) -> str:
+        payload: dict[str, Any] = {
+            "severity": self._SEVERITY.get(record.levelname, "DEFAULT"),
+            "message": record.getMessage(),
+            "logger": record.name,
+        }
+        if record.exc_info:
+            payload["exception"] = self.formatException(record.exc_info)
+        return json.dumps(payload)
+
+
+def _configure_logging() -> None:
+    """Configure root logger based on settings.log_format and settings.log_level."""
+    level = settings.log_level.upper()
+    formatter: logging.Formatter
+    if settings.log_format in ("json", "cloudrun"):
+        formatter = _CloudRunJSONFormatter()
+    else:
+        formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+    handler = logging.StreamHandler()
+    handler.setFormatter(formatter)
+    root = logging.getLogger()
+    root.handlers.clear()
+    root.addHandler(handler)
+    root.setLevel(level)
+    # Quiet noisy third-party loggers
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+
 
 # ---------------------------------------------------------------------------
 # FastMCP server instance
@@ -74,11 +129,17 @@ _API_V1 = "/v1"
 async def _server_lifespan(server):
     """Register mode-dependent tools when the server starts.
 
-    Runs at actual server startup (not import time), guaranteeing the API
-    is reachable for mode detection.  Used by both ``mcp.run()`` and
-    Horizon's entrypoint (``server.py:mcp``).
+    For stdio transport, mode detection runs eagerly here (the connection is
+    established synchronously and tool registration must complete before the
+    first message is processed).
+
+    For HTTP/SSE transport on Cloud Run, mode detection is deferred to the
+    first request via :class:`LazyInitMiddleware` so the container starts
+    instantly — Cloud Run's startup probe shouldn't depend on the API service
+    also being warm.
     """
-    _setup_mode_tools()
+    if settings.mcp_transport == "stdio":
+        _setup_mode_tools()
     yield
     # Best-effort session cleanup on shutdown
     global _http_client, _api_session_id
@@ -108,6 +169,32 @@ _http_client: httpx.Client | None = None
 _single_model_mode: bool = False
 _query_execute_enabled: bool = False
 _tools_registered: bool = False
+
+
+# ---------------------------------------------------------------------------
+# Lazy initialization middleware (HTTP transport only)
+# ---------------------------------------------------------------------------
+
+
+class LazyInitMiddleware(Middleware):
+    """Defer API mode detection and tool registration to the first MCP request.
+
+    On Cloud Run, the container starts immediately (Cloud Run startup probe
+    only needs the HTTP listener to be up). The first MCP request — typically
+    ``initialize`` from the client — triggers mode detection. This absorbs API
+    cold-start latency into the first request rather than the container boot,
+    so the two services don't have to be warm at the same time.
+    """
+
+    async def on_request(
+        self,
+        context: MiddlewareContext[Any],
+        call_next: CallNext[Any, Any],
+    ) -> Any:
+        if not _tools_registered:
+            _setup_mode_tools()
+        return await call_next(context)
+
 
 # ---------------------------------------------------------------------------
 # HTTP client & session management
@@ -293,7 +380,11 @@ def _session_request(
     sid = _ensure_session()
     path = f"{_API_V1}/sessions/{sid}{path_suffix}"
     return _api_request(
-        method, path, json_body=json_body, params=params, path_suffix=path_suffix,
+        method,
+        path,
+        json_body=json_body,
+        params=params,
+        path_suffix=path_suffix,
     )
 
 
@@ -401,7 +492,9 @@ def get_settings() -> str:
     if not _single_model_mode and _api_session_id is not None:
         params["session_id"] = _api_session_id
     resp = _api_request(
-        "GET", f"{_API_V1}/settings", retry_on_expired=False,
+        "GET",
+        f"{_API_V1}/settings",
+        retry_on_expired=False,
         params=params or None,
     )
     data = _parse_json(resp)
@@ -460,9 +553,7 @@ def get_settings() -> str:
         if ms_info.get("defaultDialect"):
             lines.append(f"  defaultDialect: {ms_info['defaultDialect']}")
         if ms_info.get("defaultNumericDataType"):
-            lines.append(
-                f"  defaultNumericDataType: {ms_info['defaultNumericDataType']}"
-            )
+            lines.append(f"  defaultNumericDataType: {ms_info['defaultNumericDataType']}")
         if ms_info.get("defaultTimezone"):
             lines.append(f"  defaultTimezone: {ms_info['defaultTimezone']}")
         if ms_info.get("overrideDatabaseTimezone"):
@@ -801,9 +892,7 @@ def _build_query_object(
             query["dimensionsExclude"] = dimensions_exclude
         return query
     else:
-        raise ToolError(
-            "Provide either dimensions/measures, fields, or query_json."
-        )
+        raise ToolError("Provide either dimensions/measures, fields, or query_json.")
 
 
 def _format_compile_result(data: dict) -> str:
@@ -2534,9 +2623,7 @@ def _detect_api_mode() -> tuple[bool, bool]:
 
 def main() -> None:
     """Run the MCP server using settings from environment / .env file."""
-    global _single_model_mode
-
-    logging.basicConfig(level=settings.log_level.upper())
+    _configure_logging()
     try:
         _version = importlib.metadata.version("orionbelt-semantic-layer-mcp")
     except importlib.metadata.PackageNotFoundError:
@@ -2547,34 +2634,42 @@ def main() -> None:
     logger.info("Thin MCP server — delegates to OrionBelt Semantic Layer REST API")
     logger.info("=" * 60)
 
-    _check_api_health()
+    if settings.mcp_transport == "stdio":
+        # stdio: eager init — connection is local & synchronous, fail-fast is fine.
+        _check_api_health()
+        _setup_mode_tools()
 
-    _setup_mode_tools()
-
-    if _single_model_mode:
-        # Verify the pre-loaded model is valid and reachable (fail fast)
-        client = _get_client()
-        try:
-            resp = client.get(f"{_API_V1}/schema")
-            resp.raise_for_status()
-            data = resp.json()
-            logger.info(
-                "Pre-loaded model validated: %d data objects, %d dimensions, "
-                "%d measures, %d metrics",
-                len(data.get("data_objects", [])),
-                len(data.get("dimensions", [])),
-                len(data.get("measures", [])),
-                len(data.get("metrics", [])),
-            )
-        except httpx.HTTPStatusError as exc:
-            logger.error("Pre-loaded model not available: %s", exc.response.text)
-            raise SystemExit(1) from None
-        except httpx.HTTPError as exc:
-            logger.error("Cannot reach API to validate pre-loaded model: %s", exc)
-            raise SystemExit(1) from None
-        tool_count = 22 if _query_execute_enabled else 21
+        if _single_model_mode:
+            # Verify the pre-loaded model is valid and reachable (fail fast)
+            client = _get_client()
+            try:
+                resp = client.get(f"{_API_V1}/schema")
+                resp.raise_for_status()
+                data = resp.json()
+                logger.info(
+                    "Pre-loaded model validated: %d data objects, %d dimensions, "
+                    "%d measures, %d metrics",
+                    len(data.get("data_objects", [])),
+                    len(data.get("dimensions", [])),
+                    len(data.get("measures", [])),
+                    len(data.get("metrics", [])),
+                )
+            except httpx.HTTPStatusError as exc:
+                logger.error("Pre-loaded model not available: %s", exc.response.text)
+                raise SystemExit(1) from None
+            except httpx.HTTPError as exc:
+                logger.error("Cannot reach API to validate pre-loaded model: %s", exc)
+                raise SystemExit(1) from None
+            tool_count = 22 if _query_execute_enabled else 21
+        else:
+            tool_count = 25 if _query_execute_enabled else 24
+        mode_label = "single-model" if _single_model_mode else "multi-model"
     else:
-        tool_count = 25 if _query_execute_enabled else 24
+        # HTTP/SSE: defer mode detection to the first request so the container
+        # starts immediately (good for Cloud Run cold starts).
+        mcp.add_middleware(LazyInitMiddleware())
+        tool_count = 0
+        mode_label = "deferred (lazy init on first request)"
 
     logger.info("")
     logger.info("Configuration:")
@@ -2582,15 +2677,15 @@ def main() -> None:
     logger.info("  Transport:  %s", settings.mcp_transport)
     if settings.mcp_transport != "stdio":
         logger.info("  Host:       %s", settings.mcp_server_host)
-        logger.info("  Port:       %s", settings.mcp_server_port)
+        logger.info("  Port:       %s", settings.effective_port)
     logger.info("  Log Level:  %s", settings.log_level)
+    logger.info("  Log Format: %s", settings.log_format)
     logger.info("  Timeout:    %ss", settings.api_timeout)
     logger.info("")
-    logger.info(
-        "Registered %d MCP tools (%s mode)",
-        tool_count,
-        "single-model" if _single_model_mode else "multi-model",
-    )
+    if settings.mcp_transport == "stdio":
+        logger.info("Registered %d MCP tools (%s mode)", tool_count, mode_label)
+    else:
+        logger.info("Tool registration: %s", mode_label)
     logger.info("")
 
     try:
@@ -2600,7 +2695,7 @@ def main() -> None:
             mcp.run(
                 transport=settings.mcp_transport,
                 host=settings.mcp_server_host,
-                port=settings.mcp_server_port,
+                port=settings.effective_port,
                 log_level=settings.log_level.lower(),
             )
     except KeyboardInterrupt:

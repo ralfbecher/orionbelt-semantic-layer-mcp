@@ -20,7 +20,7 @@ server_params = StdioServerParameters(
     command="uv",
     args=["run", "python", "server.py"],
     env={
-        "API_BASE_URL": "http://35.187.174.102",
+        "API_BASE_URL": "https://orionbelt.ralforion.com",
     },
     cwd="/path/to/orionbelt-semantic-layer-mcp",
 )
@@ -61,7 +61,7 @@ from crewai import Agent, Task, Crew
 from crewai_tools.mcp import MCPServerAdapter, StreamableHTTPServerParameters
 
 server_params = StreamableHTTPServerParameters(
-    url="https://orionbelt-semantic-layer.fastmcp.app/mcp",
+    url="https://orionbelt.ralforion.com/mcp",
 )
 
 with MCPServerAdapter(server_params) as mcp_tools:
@@ -97,7 +97,7 @@ from crewai import Agent, Task, Crew, Process
 from crewai_tools.mcp import MCPServerAdapter, StreamableHTTPServerParameters
 
 server_params = StreamableHTTPServerParameters(
-    url="https://orionbelt-semantic-layer.fastmcp.app/mcp",
+    url="https://orionbelt.ralforion.com/mcp",
 )
 
 with MCPServerAdapter(server_params) as mcp_tools:

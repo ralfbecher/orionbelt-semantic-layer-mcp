@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# Local config & secrets
+.env
+.env.local
+*.env
+
+# Tooling
+.git/
+.github/
+.claude/
+.idea/
+.vscode/
+.DS_Store
+
+# Tests & docs not needed at runtime
+tests/
+docs/
+design/
+*.md
+!README.md
+
+# Source control
+.gitignore
+.dockerignore
+
+# Editor
+*.swp
+*.swo
