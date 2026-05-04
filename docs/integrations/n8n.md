@@ -16,7 +16,7 @@ MCP_TRANSPORT=http uv run python server.py
 # Server runs at http://localhost:9000
 
 # Option 2: Use the hosted demo (no local setup needed)
-# URL: https://orionbelt-semantic-layer.fastmcp.app/mcp
+# URL: https://orionbelt.ralforion.com/mcp
 ```
 
 ## Setup in n8n
@@ -30,7 +30,7 @@ MCP_TRANSPORT=http uv run python server.py
 | Field | Value |
 |-------|-------|
 | **Connection Type** | Streamable HTTP |
-| **URL** | `http://localhost:9000/mcp` (local) or `https://orionbelt-semantic-layer.fastmcp.app/mcp` (hosted demo) |
+| **URL** | `http://localhost:9000/mcp` (local) or `https://orionbelt.ralforion.com/mcp` (hosted demo) |
 
 4. Click **Save**
 

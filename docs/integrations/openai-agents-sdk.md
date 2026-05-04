@@ -25,7 +25,7 @@ async def main():
             "command": "uv",
             "args": ["run", "python", "server.py"],
             "env": {
-                "API_BASE_URL": "http://35.187.174.102",  # demo API
+                "API_BASE_URL": "https://orionbelt.ralforion.com",  # demo API
             },
         },
         cwd="/path/to/orionbelt-semantic-layer-mcp",
@@ -63,7 +63,7 @@ async def main():
     async with MCPServerStreamableHttp(
         name="OrionBelt Semantic Layer",
         params={
-            "url": "https://orionbelt-semantic-layer.fastmcp.app/mcp",
+            "url": "https://orionbelt.ralforion.com/mcp",
         },
     ) as server:
         agent = Agent(
@@ -114,7 +114,7 @@ async def main():
     async with MCPServerStreamableHttp(
         name="OrionBelt Semantic Layer",
         params={
-            "url": "https://orionbelt-semantic-layer.fastmcp.app/mcp",
+            "url": "https://orionbelt.ralforion.com/mcp",
         },
     ) as server:
         # Agent 1: Model expert — explores and explains the semantic model

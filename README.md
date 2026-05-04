@@ -31,7 +31,7 @@ A thin MCP server that delegates all business logic to the [OrionBelt Semantic L
 The OrionBelt Semantic Layer platform has two deployment modes. This MCP server supports both:
 
 - **Standalone** — Deploy the [OrionBelt Semantic Layer API](https://github.com/ralfbecher/orionbelt-semantic-layer) anywhere (Cloud Run, Docker, localhost) and point this MCP server at it via `API_BASE_URL`.
-- **Hosted** — Use the managed deployment on [Prefect Horizon](https://horizon.prefect.io) with zero local setup (see [Live Demo Hosting](#mcp-live-demo-hosting-at-prefect-horizon) below).
+- **Hosted** — Connect to the public Cloud Run deployment with zero local setup (see [Hosted MCP Server](#hosted-mcp-server) below).
 
 ```
 ┌────────────┐       ┌──────────────────────────────────────────────────────┐
@@ -58,9 +58,9 @@ The OrionBelt Semantic Layer platform has two deployment modes. This MCP server 
 
 A public demo of the OrionBelt Semantic Layer API is available at:
 
-> **API endpoint:** `http://35.187.174.102` — [Swagger UI](http://35.187.174.102/docs) | [ReDoc](http://35.187.174.102/redoc) | [Gradio UI](http://35.187.174.102/ui/?__theme=dark)
+> **API endpoint:** `https://orionbelt.ralforion.com` — [Swagger UI](https://orionbelt.ralforion.com/docs) | [ReDoc](https://orionbelt.ralforion.com/redoc) | [Gradio UI](https://orionbelt.ralforion.com/ui/?__theme=dark)
 
-Set `API_BASE_URL=http://35.187.174.102` in your `.env` file to use it (see `.env.example`).
+Set `API_BASE_URL=https://orionbelt.ralforion.com` in your `.env` file to use it (see `.env.example`).
 
 ## Installation
 
@@ -205,26 +205,89 @@ uv run ruff check server.py
 uv run ruff format server.py tests/
 ```
 
-## MCP Live Demo Hosting at Prefect Horizon
+## Hosted MCP Server
 
-The OrionBelt Semantic Layer MCP server is available as a hosted live demo on [Prefect Horizon](https://horizon.prefect.io), a managed platform for deploying MCP servers.
+A public hosted instance of this MCP server runs on Google Cloud Run, connected
+to the live OrionBelt Semantic Layer demo API. No local install, no API key.
 
-### MCP URL
-
-Use this URL to connect any MCP-compatible client to the hosted server (no authentication required):
+### Endpoint
 
 ```
-https://orionbelt-semantic-layer.fastmcp.app/mcp
+https://orionbelt.ralforion.com/mcp
 ```
+
+Streamable HTTP (MCP spec 2025-03-26). Stateful — clients should send the
+`initialize` handshake and reuse the returned `Mcp-Session-Id` header.
 
 ### Quick start with Claude Desktop
 
-1. Download the Desktop Extension:
-   [orionbelt-semantic-layer.dxt](https://orionbelt-semantic-layer.fastmcp.app/manifest.dxt)
-2. Open the `.dxt` file in [Claude Desktop](https://claude.ai/download)
-   (requires Claude Desktop with MCP support)
+Claude Desktop's config schema accepts only stdio launchers — for a remote
+MCP server, use the [`mcp-remote`](https://www.npmjs.com/package/mcp-remote)
+stdio↔HTTP bridge (auto-fetched by `npx`, no manual install).
 
-No local setup or API key needed — the hosted server connects to the live demo API.
+Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
+or `%APPDATA%\Claude\claude_desktop_config.json` (Windows) and add:
+
+```json
+{
+  "mcpServers": {
+    "orionbelt": {
+      "command": "npx",
+      "args": [
+        "mcp-remote",
+        "https://orionbelt.ralforion.com/mcp",
+        "--transport",
+        "http"
+      ]
+    }
+  }
+}
+```
+
+Fully quit Claude Desktop (⌘Q on macOS — closing the window isn't enough) and
+reopen. The OrionBelt tools then appear in the tools menu.
+
+Alternatively, in newer Claude Desktop builds: **Settings → Connectors → Add
+custom connector**, paste the URL above. No file editing or `npx` required.
+
+> **Why `mcp-remote`?** Claude Desktop's `claude_desktop_config.json` schema
+> currently only validates stdio entries (`command` + `args`). A bare
+> `{"url": "…"}` entry is rejected with *"not valid MCP server configurations
+> and were skipped"*. `mcp-remote` runs a local stdio bridge that forwards to
+> the HTTPS endpoint, so Claude Desktop sees a normal stdio server. **Claude
+> Code** does support `{"type": "url", "url": "…"}` natively — see below.
+
+### Quick start with Claude Code
+
+Add to `.mcp.json` in any repo (or `~/.config/claude-code/.mcp.json` globally):
+
+```json
+{
+  "mcpServers": {
+    "orionbelt": {
+      "type": "url",
+      "url": "https://orionbelt.ralforion.com/mcp"
+    }
+  }
+}
+```
+
+### Other MCP clients
+
+Any client that supports Streamable HTTP transport (MCP spec 2025-03-26) can
+point at the URL above. The endpoint accepts `POST /mcp` with
+`Accept: application/json, text/event-stream`. See
+[`tests/cloudrun/test_mcp_cloudrun.sh`](tests/cloudrun/test_mcp_cloudrun.sh)
+for a stdlib-only Python smoke test that walks the full handshake.
+
+### Notes
+
+- The hosted instance scales to zero when idle, so the first request after a
+  cold period takes ~1–2 seconds longer.
+- It connects to the public demo API at `https://orionbelt.ralforion.com` — same data,
+  same dialects, no authentication. Don't load production data through it.
+- For self-hosting, see the [Installation](#installation) section above and
+  the [`Dockerfile`](Dockerfile).
 
 ## License
 

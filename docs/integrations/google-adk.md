@@ -26,7 +26,7 @@ async def main():
             command="uv",
             args=["run", "python", "server.py"],
             env={
-                "API_BASE_URL": "http://35.187.174.102",
+                "API_BASE_URL": "https://orionbelt.ralforion.com",
             },
             cwd="/path/to/orionbelt-semantic-layer-mcp",
         )
@@ -86,7 +86,7 @@ from google.genai import types
 async def main():
     tools, exit_stack = await MCPToolset.from_server(
         connection_params=StreamableHTTPServerParameters(
-            url="https://orionbelt-semantic-layer.fastmcp.app/mcp",
+            url="https://orionbelt.ralforion.com/mcp",
         )
     )
 
@@ -157,7 +157,7 @@ from google.genai import types
 async def main():
     tools, exit_stack = await MCPToolset.from_server(
         connection_params=StreamableHTTPServerParameters(
-            url="https://orionbelt-semantic-layer.fastmcp.app/mcp",
+            url="https://orionbelt.ralforion.com/mcp",
         )
     )
 

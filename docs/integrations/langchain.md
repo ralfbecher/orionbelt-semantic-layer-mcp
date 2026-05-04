@@ -24,7 +24,7 @@ async with MultiServerMCPClient(
             "command": "uv",
             "args": ["run", "python", "server.py"],
             "env": {
-                "API_BASE_URL": "http://35.187.174.102",
+                "API_BASE_URL": "https://orionbelt.ralforion.com",
             },
             "cwd": "/path/to/orionbelt-semantic-layer-mcp",
             "transport": "stdio",
@@ -53,7 +53,7 @@ llm = ChatOpenAI(model="gpt-4o")
 async with MultiServerMCPClient(
     {
         "orionbelt": {
-            "url": "https://orionbelt-semantic-layer.fastmcp.app/mcp",
+            "url": "https://orionbelt.ralforion.com/mcp",
             "transport": "streamable_http",
         }
     }
@@ -80,7 +80,7 @@ llm = ChatAnthropic(model="claude-sonnet-4-20250514")
 async with MultiServerMCPClient(
     {
         "orionbelt": {
-            "url": "https://orionbelt-semantic-layer.fastmcp.app/mcp",
+            "url": "https://orionbelt.ralforion.com/mcp",
             "transport": "streamable_http",
         }
     }
@@ -101,7 +101,7 @@ LangChain's `MultiServerMCPClient` supports connecting to multiple MCP servers s
 async with MultiServerMCPClient(
     {
         "orionbelt": {
-            "url": "https://orionbelt-semantic-layer.fastmcp.app/mcp",
+            "url": "https://orionbelt.ralforion.com/mcp",
             "transport": "streamable_http",
         },
         "another-server": {
@@ -130,7 +130,7 @@ llm = ChatOpenAI(model="gpt-4o")
 async with MultiServerMCPClient(
     {
         "orionbelt": {
-            "url": "https://orionbelt-semantic-layer.fastmcp.app/mcp",
+            "url": "https://orionbelt.ralforion.com/mcp",
             "transport": "streamable_http",
         }
     }
