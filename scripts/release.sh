@@ -199,6 +199,29 @@ if confirm "Build and publish to PyPI?"; then
     uv build
     uv publish
     ok "Published to PyPI"
+
+    # Smoke-test that PyPI actually serves the new version. PyPI's CDN
+    # propagation is usually a few seconds but can take up to ~60s on a
+    # cold cache, so retry for up to 2 minutes before giving up. Uses
+    # ``uv run --no-project`` so the test ignores the local source tree
+    # and only resolves what's on PyPI.
+    echo "Smoke-testing pip install from PyPI..."
+    SMOKE_OK=0
+    for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
+        if uv run --no-project --with "orionbelt-semantic-layer-mcp==${VERSION}" -- \
+                python -c "import server" \
+                >/dev/null 2>&1; then
+            SMOKE_OK=1
+            break
+        fi
+        echo "  attempt $i/12: not yet available, retrying in 10s..."
+        sleep 10
+    done
+    if [[ "$SMOKE_OK" == "1" ]]; then
+        ok "Smoke test passed: pip install orionbelt-semantic-layer-mcp==${VERSION} resolves and imports cleanly"
+    else
+        warn "Smoke test failed after 2 minutes — verify manually at https://pypi.org/project/orionbelt-semantic-layer-mcp/${VERSION}/"
+    fi
 fi
 
 # ---------------------------------------------------------------------------
