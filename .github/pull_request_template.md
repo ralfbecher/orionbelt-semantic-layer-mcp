@@ -14,3 +14,4 @@
 - [ ] `README.md` version badge updated
 - [ ] `uv lock` re-run so `uv.lock` matches the new version
 - [ ] Tests pass
+- [ ] After merge: push `vX.Y.Z` tag → `release.yml` publishes to PyPI; Cloud Build trigger redeploys Cloud Run
