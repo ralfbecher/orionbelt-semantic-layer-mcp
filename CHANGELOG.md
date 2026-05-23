@@ -4,6 +4,61 @@ All notable changes to OrionBelt Semantic Layer MCP are documented in this file.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.6.0] — 2026-05-23
+
+### Added
+
+- **OSI input validation surfacing** in `convert_osi_to_obml`. The API
+  v2.6.0 `/v1/convert/osi-to-obml` response now carries an
+  `input_validation` block (OSI input checked against the vendored OSI
+  v0.2 schema before conversion); the tool renders schema errors and
+  semantic warnings as advisory text alongside the existing output-side
+  `validation` block. Legacy OSI v0.1 inputs still convert via the
+  upstream compat shim — any `input_validation` issues there surface as
+  advisory only.
+- **Window-metric rendering** in `describe_model` and `list_metrics`.
+  The new OBML `type: window` metrics (rank, dense_rank, row_number,
+  ntile, lag, lead, first_value, last_value) pretty-print
+  `windowFunction`, `measure`, `partitionBy`, `orderDirection`
+  (non-default only), `offset`, `buckets`, `defaultValue`, and
+  `timeDimension` so LLMs and humans see the full metric definition at
+  a glance.
+- **`partitionBy` rendering on cumulative metrics** — the new v2.6.0
+  per-dimension partitioning for running/rolling/grain-to-date metrics
+  (e.g. moving averages per country) is surfaced in the cumulative
+  one-line summary.
+- **Two-column statistical aggregate columns** rendered in
+  `describe_model` and `list_measures`. Measures using the new
+  statistical aggregates `corr`, `covar_pop`, `covar_samp`,
+  `regr_slope`, `regr_intercept` carry ordered column references, and
+  the rendered output now shows `columns: [DataObj.Col, DataObj.Col]`
+  so the order (significant in the compiled SQL) is visible.
+
+### Changed
+
+- Version bumped to 2.6.0 (aligned with OrionBelt Semantic Layer API
+  2.6.0).
+- OrionBelt Semantic Layer badge updated to 2.6.
+
+### Notes
+
+- All new behaviors are **forward-compatible**: tools read the new
+  response fields defensively and stay silent when run against
+  pre-v2.6.0 servers, so no observable change for v2.5.0 deployments.
+- Reference content fetched via `get_obml_reference` (statistical
+  aggregations list, dialect-coverage matrix, window-metric examples,
+  `partitionBy` semantics) flows through automatically from the live
+  API — no MCP-side hardcoding.
+- `compile_obsql` / `execute_obsql` accept the new aggregations and
+  metric type by pass-through; unsupported aggregation/dialect
+  combinations raise `UNSUPPORTED_AGGREGATION_FOR_DIALECT` at compile
+  time, formatted cleanly by the existing structured-error path.
+- Upstream env-var rename `MODEL_FILE` → `MODEL_FILES` is server-side
+  only — this MCP doesn't set the variable and continues to auto-detect
+  single-model vs multi-model mode at startup.
+
+---
+
 ## [2.5.0] — 2026-05-22
 
 ### Changed
