@@ -2110,6 +2110,25 @@ def test_resolution_error_appends_inner_errors():
     assert "UNKNOWN_MEASURE: No such measure 'Bar'" in detail
 
 
+def test_unknown_property_top_level_envelope():
+    """API >= 2.7.2 returns UNKNOWN_PROPERTY at the top level without a ``detail`` wrapper."""
+    body = {
+        "message": "Request contains unknown properties",
+        "errors": [
+            {
+                "code": "UNKNOWN_PROPERTY",
+                "message": "Unknown property 'filtter' at where.0",
+                "path": "where.0",
+            },
+        ],
+        "warnings": [],
+    }
+    resp = httpx.Response(422, json=body)
+    detail = server._parse_error_detail(resp)
+    assert "Request contains unknown properties" in detail
+    assert "UNKNOWN_PROPERTY: Unknown property 'filtter' at where.0" in detail
+
+
 def test_connect_error_raises_tool_error(monkeypatch):
     """Connection errors are raised as ToolError."""
     from fastmcp.exceptions import ToolError

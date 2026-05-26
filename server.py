@@ -286,10 +286,17 @@ def _parse_error_detail(response: httpx.Response) -> str:
     typed context (``dialect`` + ``aggregation`` / ``grouping``, or a list
     of ``errors`` with ``code`` / ``message``), it is appended to the
     message so the LLM sees the structured fields without parsing JSON.
+
+    Also handles the top-level ``{message, errors, warnings}`` envelope the
+    API uses for ``UNKNOWN_PROPERTY`` (Pydantic ``extra="forbid"`` 422s) —
+    no ``detail`` wrapper there, so we promote the body itself.
     """
     try:
         body = response.json()
-        detail = body.get("detail", response.text)
+        if isinstance(body, dict) and "detail" not in body and isinstance(body.get("errors"), list):
+            detail: object = body
+        else:
+            detail = body.get("detail", response.text) if isinstance(body, dict) else response.text
         if isinstance(detail, dict):
             message = detail.get("message") or detail.get("error") or str(detail)
             # UnsupportedAggregationError / UnsupportedGroupingError shape
@@ -3437,6 +3444,16 @@ _DEBUG_VALIDATION_TEXT = """\
 
 ## Parse Errors
 
+- `UNKNOWN_PROPERTY`: An OBML object or QueryObject contains a property name
+  that is not part of its schema (e.g. `filtter:` instead of `filter:`).
+  Strict parsing is the default — unknown keys are never silently dropped.
+  The API response carries one error per offending key with a `path` (e.g.
+  `where[0]`) and a "did you mean?" suggestion list derived from the model's
+  real fields.
+  Fix: Use the suggestion, or check the JSON schema (`get_json_schema("obml")`
+  / `get_json_schema("query")`) for the exact field names. Common culprits:
+  typos, snake_case vs camelCase mix-ups, fields that moved between
+  versions.
 - `YAML_PARSE_ERROR`: Invalid YAML syntax.
   Fix: Check indentation, quoting, colons.
 - `YAML_SAFETY_ERROR`: YAML safety constraint violated (anchors, oversized).
