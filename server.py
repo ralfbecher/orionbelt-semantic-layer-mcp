@@ -425,7 +425,7 @@ class PhaseMiddleware(Middleware):
         if name and _is_runtime_tool(name) and _current_phase() == PHASE_DESIGN:
             raise ToolError(
                 f"No model loaded — '{name}' is a run-time tool and is not "
-                "available yet. Call load_model first, then re-list tools: the "
+                "available yet. Load a model first, then re-list tools: the "
                 "run-time tool set (execute_query, describe_model, find_artefacts, "
                 "…) becomes available once a model is loaded."
             )
@@ -738,10 +738,10 @@ def obsql_reference() -> str:
 def get_obml_reference() -> str:
     """Get the OBML format reference.
 
-    IMPORTANT: Call this tool BEFORE composing any OBML YAML to understand
-    the correct syntax.  Returns the full specification with examples for
-    dataObjects (including joins defined inside each dataObject),
-    dimensions, measures, metrics, and expressions.
+    Returns the full specification with examples for dataObjects (including
+    joins defined inside each dataObject), dimensions, measures, metrics, and
+    expressions. Use this reference to understand the correct OBML syntax
+    before composing models.
     """
     return _fetch_obml_reference()
 
@@ -1394,7 +1394,7 @@ def _impl_load_model(
     if not model:
         raise ToolError(
             "model is mandatory — provide the OBML model as a JSON object. "
-            "Call get_obml_reference() first to learn the structure."
+            "The OBML reference is available as a separate tool to learn the structure."
         )
     if isinstance(model, str):
         try:
@@ -1549,8 +1549,8 @@ def _impl_remove_model(model_id: str) -> str:
     if _current_phase() == PHASE_DESIGN:
         msg += (
             "\n\nNo models remain loaded — back to the design-time tool set. "
-            "Re-list tools: run-time verbs are unavailable until you "
-            "load_model again."
+            "Re-list tools: run-time verbs are unavailable until a model "
+            "is loaded again."
         )
     return msg
 
@@ -1648,7 +1648,7 @@ def _resolve_model_id(model_id: str | None) -> str | None:
         return None
     if not model_id:
         raise ToolError(
-            "model_id is required (multi-model mode) — call load_model first "
+            "model_id is required (multi-model mode) — load a model first "
             "and pass the id it returns."
         )
     return model_id
@@ -1676,8 +1676,8 @@ def _register_model_tools() -> None:
         """Describe the contents of the model.
 
         Shows data objects (with columns and joins), dimensions, measures, and
-        metrics.  In multi-model mode, call this after ``load_model`` to explore
-        a model.
+        metrics.  In multi-model mode, use this after loading a model to explore
+        its structure.
 
         Args:
             model_id: id from ``load_model`` (multi-model); omit in single-model.
@@ -1898,9 +1898,8 @@ def _register_model_tools() -> None:
           ``version``, ``dataObjects``, ``dimensions``, ``measures``,
           ``metrics`` (camelCase throughout). Joins live INSIDE each
           dataObject (``joins`` list), not at the top level, and reference OBML
-          column names. Supports ``extends``/``inherits``. Call
-          ``get_json_schema("obml")`` for the schema or ``get_obml_reference()``
-          for the full specification with examples.
+          column names. Supports ``extends``/``inherits``. The OBML schema and
+          full specification with examples are available as separate references.
         - ``osi_yaml`` (OSI — Open Semantic Interchange): a YAML string,
           converted to OBML server-side before loading. Surfaces the OSI → OBML
           conversion warnings and advisory OSI-schema validation alongside the
@@ -2187,7 +2186,7 @@ OBML model definition (not at query time):
   Operators: `exclude`, `include` (static filters), `keepOnly`.
 
 Both are defined in the OBML YAML and passed through to the API.
-Call `get_obml_reference()` for full syntax and examples.
+The full OBML syntax and examples are available in the OBML reference.
 
 ## Role-Playing Dimensions (via)
 
