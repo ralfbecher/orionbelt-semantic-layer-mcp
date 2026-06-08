@@ -4,6 +4,21 @@ All notable changes to OrionBelt Semantic Layer MCP are documented in this file.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.8.2] — 2026-06-08
+
+### Fixed
+
+- **Tool description cross-references causing misdirection.** Removed imperative
+  references to other tools from descriptions and error messages that were
+  causing LLMs to incorrectly route to referenced tools instead of the intended
+  one. Changes:
+  - `load_model`: Removed "Call get_json_schema()" and "get_obml_reference()"
+    imperatives from description
+  - `get_obml_reference`: Removed "IMPORTANT: Call this tool BEFORE" directive
+  - Error messages: Replaced "Call load_model" with non-imperative phrasing
+  - Tool descriptions: Changed "call this after load_model" to "use this after
+    loading a model"
+
 ## [2.8.1] — 2026-06-06
 
 ### Changed
