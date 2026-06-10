@@ -4,6 +4,29 @@ All notable changes to OrionBelt Semantic Layer MCP are documented in this file.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.8.5] — 2026-06-09
+
+### Changed
+
+- **Constrained `get_model_diagram` `theme` to a `Literal` enum.** The parameter
+  now accepts only the five built-in Mermaid themes (`default`, `dark`,
+  `forest`, `neutral`, `base`) instead of a free-form string, so invalid themes
+  are rejected at the input boundary and the constraint is published in the
+  tool's JSON schema. Tightens schema rigor; no behavior change for valid
+  callers (default remains `default`).
+
+### Documentation
+
+- Corrected the advertised tool counts to **14** (single-model) / **18**
+  (multi-model), and clarified that 19 distinct tools exist in total with the
+  active subset selected by API mode.
+- Trimmed trailing whitespace flagged by `git diff --check`.
+
+### Tooling
+
+- Added `scripts/setup-hooks.sh` to install the pre-commit `ruff` format/check
+  hook (it was referenced in the README but missing from the repo).
+
 ## [2.8.4] — 2026-06-08
 
 ### Fixed
