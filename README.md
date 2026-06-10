@@ -47,7 +47,7 @@ The OrionBelt Semantic Layer platform has two deployment modes. This MCP server 
 - **No business logic** — all tool calls delegate to the REST API (v1 endpoints)
 - **Dual-mode** — auto-detects single-model or multi-model API mode at startup
 - **Auto-session management** — creates an API session on first tool call, caches the ID (multi-model mode)
-- **15 tools** (single-model mode) or **20 tools** (multi-model mode) for querying (QueryObject), execution, batch, discovery, examples, diagrams, RDF/SPARQL, OSI import/export, and OBML reference + JSON schemas. The visible surface is smaller in the design-time phase and when query execution is disabled (see [Design-time vs run-time tool switching](#design-time-vs-run-time-tool-switching))
+- **14 tools** (single-model mode) or **18 tools** (multi-model mode) for querying (QueryObject), execution, batch, discovery, examples, diagrams, RDF/SPARQL, OSI export, and OBML reference + JSON schemas. The visible surface is smaller in the design-time phase and when query execution is disabled (see [Design-time vs run-time tool switching](#design-time-vs-run-time-tool-switching))
 - **4 prompts + 2 resources** for OBML / OBSQL reference and usage guidance
 
 <p align="center">
@@ -286,7 +286,7 @@ uv run ruff format server.py tests/
 The release script (`scripts/release.sh`) includes comprehensive pre-flight checks to prevent issues like the v2.8.2 formatting problem:
 
 - **Code formatting check** - Ensures `ruff format` passes
-- **Linting check** - Ensures `ruff check` passes  
+- **Linting check** - Ensures `ruff check` passes
 - **CI status check** - Warns if CI is not green
 - **Test suite** - Runs all tests
 - **Version consistency** - Verifies version across files
