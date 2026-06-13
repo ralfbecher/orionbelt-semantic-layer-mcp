@@ -4,6 +4,31 @@ All notable changes to OrionBelt Semantic Layer MCP are documented in this file.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.11.0] — 2026-06-13
+
+Tracks OrionBelt Semantic Layer API **v2.11.0**. Version-lockstep bump — no
+tool signatures or response shapes change. The API release adds Dremio
+federation filter pushdown, a cleaner federated catalog, and a federation
+demo, alongside compiler fixes. All of these reach this MCP transparently
+through the unchanged REST endpoints it delegates to.
+
+### Changed
+
+- **Compatibility raised to API v2.11.x.** The startup version gate (which
+  requires a matching `major.minor`) now expects API `2.11.x`; running against
+  `2.10.x` is no longer supported.
+
+### Notes
+
+- **Compiler correctness improvements flow through `execute_query`.** The API
+  now supports multiple period-over-period offsets in a single query (e.g.
+  MoM + YoY), fixes a cross-fact metric column leak, and resolves
+  period-over-period on Dremio (reserved-word alias). These change the
+  generated SQL only; the MCP relays results unchanged.
+- **pgwire (Postgres wire protocol) changes are out of scope for this MCP.**
+  The federated catalog and router updates target the BI-facing pgwire
+  interface, which this MCP does not wrap.
+
 ## [2.10.0] — 2026-06-12
 
 Tracks OrionBelt Semantic Layer API **v2.10.0**. Version-lockstep bump — no
