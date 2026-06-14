@@ -7,11 +7,11 @@
 
 <p align="center"><strong>Thin MCP server that delegates to the OrionBelt Semantic Layer REST API</strong></p>
 
-[![Version 2.11.0](https://img.shields.io/badge/version-2.11.0-purple.svg)](https://github.com/ralfbecher/orionbelt-semantic-layer-mcp/releases)
-[![OrionBelt Semantic Layer 2.11](https://img.shields.io/badge/OrionBelt_Semantic_Layer-2.11-0054A6.svg)](https://github.com/ralfbecher/orionbelt-semantic-layer)
+[![Version 2.12.0](https://img.shields.io/badge/version-2.12.0-purple.svg)](https://github.com/ralfbecher/orionbelt-semantic-layer-mcp/releases)
+[![OrionBelt Semantic Layer 2.12](https://img.shields.io/badge/OrionBelt_Semantic_Layer-2.12-0054A6.svg)](https://github.com/ralfbecher/orionbelt-semantic-layer)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://github.com/ralfbecher/orionbelt-semantic-layer-mcp/blob/main/LICENSE)
-[![FastMCP](https://img.shields.io/badge/FastMCP-3.3+-8A2BE2)](https://gofastmcp.com)
+[![FastMCP](https://img.shields.io/badge/FastMCP-3.4+-8A2BE2)](https://gofastmcp.com)
 [![Pydantic v2](https://img.shields.io/badge/Pydantic-v2-E92063.svg?logo=pydantic&logoColor=white)](https://docs.pydantic.dev)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://docs.astral.sh/ruff/)
 
@@ -111,6 +111,8 @@ Environment variables or `.env` file (pydantic-settings). See `.env.example` for
 | Variable          | Default      | Description                           |
 | ----------------- | ------------ | ------------------------------------- |
 | `API_BASE_URL`    | — (required) | OrionBelt Semantic Layer REST API URL |
+| `API_KEY`         | — (unset)    | API credential; required only when the API runs with `AUTH_MODE=api_key` |
+| `API_KEY_HEADER`  | `X-API-Key`  | Header the credential is sent in; must match the API's `API_KEY_HEADER` |
 | `MCP_TRANSPORT`   | `stdio`      | `stdio`, `http`, or `sse`             |
 | `MCP_SERVER_HOST` | `localhost`  | Bind host for HTTP/SSE                |
 | `MCP_SERVER_PORT` | `9000`       | Bind port for HTTP/SSE                |

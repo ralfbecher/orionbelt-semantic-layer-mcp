@@ -4,6 +4,32 @@ All notable changes to OrionBelt Semantic Layer MCP are documented in this file.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.12.0] — 2026-06-14
+
+Tracks OrionBelt Semantic Layer API **v2.12.0**, which gates every `/v1/*`
+endpoint behind authentication when the API runs with `AUTH_MODE=api_key`.
+This release teaches the MCP to authenticate so it keeps working once the API
+turns auth on. Backward compatible: with no credential configured, behaviour
+against an unauthenticated API (`AUTH_MODE=none`) is unchanged.
+
+### Added
+
+- **`API_KEY` setting.** When set, the credential is sent on every API request.
+  Required only when the API runs with `AUTH_MODE=api_key`; leave unset for
+  unauthenticated deployments.
+- **`API_KEY_HEADER` setting** (default `X-API-Key`). The header the credential
+  rides in; must match the API's `API_KEY_HEADER`. Set to `Authorization` (with
+  a `Bearer ` value prefix) to use the API's bearer-token path instead.
+
+### Changed
+
+- **401/403 API responses raise an actionable error.** Authentication failures
+  now point the operator at `API_KEY` / `API_KEY_HEADER` rather than surfacing a
+  generic error.
+- **Upgraded FastMCP to 3.4.x** (floor raised to `>=3.4,<4`), which pulls in
+  Starlette 1.x. No code changes required — the middleware, tool, resource, and
+  transport surfaces this server uses are unchanged.
+
 ## [2.11.0] — 2026-06-13
 
 Tracks OrionBelt Semantic Layer API **v2.11.0**. Version-lockstep bump — no
