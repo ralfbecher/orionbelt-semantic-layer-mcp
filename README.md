@@ -7,8 +7,8 @@
 
 <p align="center"><strong>Thin MCP server that delegates to the OrionBelt Semantic Layer REST API</strong></p>
 
-[![Version 2.12.0](https://img.shields.io/badge/version-2.12.0-purple.svg)](https://github.com/ralfbecher/orionbelt-semantic-layer-mcp/releases)
-[![OrionBelt Semantic Layer 2.12](https://img.shields.io/badge/OrionBelt_Semantic_Layer-2.12-0054A6.svg)](https://github.com/ralfbecher/orionbelt-semantic-layer)
+[![Version 2.14.0](https://img.shields.io/badge/version-2.14.0-purple.svg)](https://github.com/ralfbecher/orionbelt-semantic-layer-mcp/releases)
+[![OrionBelt Semantic Layer 2.14](https://img.shields.io/badge/OrionBelt_Semantic_Layer-2.14-0054A6.svg)](https://github.com/ralfbecher/orionbelt-semantic-layer)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://github.com/ralfbecher/orionbelt-semantic-layer-mcp/blob/main/LICENSE)
 [![FastMCP](https://img.shields.io/badge/FastMCP-3.4+-8A2BE2)](https://gofastmcp.com)
@@ -141,6 +141,7 @@ Environment variables or `.env` file (pydantic-settings). See `.env.example` for
 | `list_examples(model_id, intent?)`       | List authored example queries (filterable by intent tag)                                         |
 | `get_example(model_id, name)`            | Get one example with query + compiled SQL preview                                                |
 | `get_join_graph(model_id)`               | Return the join graph as an adjacency list                                                       |
+| `find_composables(query_json?, anchors?, anchor_type?, model_id?)` | **ACR** — given an in-progress query or named anchor(s), return the dimensions/measures/metrics that still compose into a valid, fanout-free result (plus CFL candidates). Guaranteed to compile |
 
 ### Query, execution & diagrams
 
@@ -190,7 +191,7 @@ design/reference tools:
 | --------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Always**      | always (both phases)        | `load_model`, `remove_model` (transition verbs — stay available in the run phase so a second model can be loaded mid-session, up to `max_models_per_session`); `run_batch` (self-contained one-shot — loads/references a model inline, so it needs no prior session state); `get_json_schema` (QueryObject/OBML schemas — needed in both phases) |
 | **Design-only** | only when no model loaded   | `get_obml_reference`, `list_dialects`                                                                                                                                  |
-| **Run-only**    | only when a model is loaded | `describe_model`, `get_model_diagram`, `find_artefacts`, `explain_artefact`, `execute_query`, `list_examples`, `get_example`, `get_model_graph`, `get_join_graph`, `query_model_graph_by_sparql`, `list_models`, `export_model_to_osi` |
+| **Run-only**    | only when a model is loaded | `describe_model`, `get_model_diagram`, `find_artefacts`, `explain_artefact`, `execute_query`, `list_examples`, `get_example`, `get_model_graph`, `get_join_graph`, `find_composables`, `query_model_graph_by_sparql`, `list_models`, `export_model_to_osi` |
 
 ```
                        load_model  (returns "re-list" signal)
