@@ -4,6 +4,17 @@ All notable changes to OrionBelt Semantic Layer MCP are documented in this file.
 
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [2.15.0] — 2026-06-18
+
+Tracks OrionBelt Semantic Layer API **v2.15.0**. This is a version-tracking
+release: the API's v2.15.0 changes are all on surfaces the MCP does not wrap
+(Postgres wire protocol DECIMAL→NUMERIC reporting and Dremio federation
+pushdown, the Gradio UI, the demo stack) plus internal compiler fixes (HAVING
+filters on period-over-period metrics are now applied; clearer errors for
+incompatible-artefact combinations), so no MCP tool is added or changed. The
+bump keeps the MCP's `major.minor` aligned with the API, which the startup
+compatibility check requires.
+
 ## [2.14.0] — 2026-06-16
 
 Tracks OrionBelt Semantic Layer API **v2.14.0**, which adds **Artefacts
