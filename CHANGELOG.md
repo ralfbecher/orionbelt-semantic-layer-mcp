@@ -24,11 +24,11 @@ surfaces the MCP passes through verbatim:
 
 ### Changed
 
-- **`execute_query` / `compile_query` docs use canonical camelCase.** The
-  worked `query_json` example and the docstring references switched the lone
-  snake_case query key `order_by` to `orderBy`, matching the now camelCase-only
-  query schema. (Response-reading code that consumes the API's snake_case
-  response envelopes — `dataObjects`, `pathName`, etc. — is unchanged; only the
+- **`execute_query` docs use canonical camelCase.** The worked `query_json`
+  example and the query-writing reference switched the lone snake_case query
+  key `order_by` to `orderBy`, matching the now camelCase-only query schema.
+  (Response-reading code that consumes the API's snake_case response envelopes
+  — `data_objects`, `path_name`, `result_type`, etc. — is unchanged; only the
   host-facing query payload examples moved.)
 - **Internal refactors and CI quality gates** (OBML contract manifest + drift
   gate, explicit compiler wrapper passes, service-layer extraction, module
