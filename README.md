@@ -24,6 +24,10 @@
 [![DuckDB](https://img.shields.io/badge/DuckDB-FFF000.svg?logo=duckdb&logoColor=black)](https://duckdb.org)
 [![MySQL](https://img.shields.io/badge/MySQL-4479A1.svg?logo=mysql&logoColor=white)](https://www.mysql.com)
 
+[![Docker Hub](https://img.shields.io/docker/v/ralforion/orionbelt-semantic-layer-mcp?logo=docker&logoColor=white&label=Docker%20Hub&color=2496ED&sort=semver)](https://hub.docker.com/r/ralforion/orionbelt-semantic-layer-mcp/tags)
+[![Docker pulls](https://img.shields.io/docker/pulls/ralforion/orionbelt-semantic-layer-mcp?logo=docker&logoColor=white&color=2496ED)](https://hub.docker.com/r/ralforion/orionbelt-semantic-layer-mcp)
+[![Image size](https://img.shields.io/docker/image-size/ralforion/orionbelt-semantic-layer-mcp/latest?logo=docker&logoColor=white&color=2496ED)](https://hub.docker.com/r/ralforion/orionbelt-semantic-layer-mcp/tags)
+
 A thin MCP server that delegates all business logic to the [OrionBelt Semantic Layer](https://github.com/ralforion/orionbelt-semantic-layer) REST API via HTTP. No embedded engine — pure API pass-through.
 
 ## Architecture
